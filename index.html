@@ -214,6 +214,22 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
   </div>
 
   <hr/>
+  <div class="sec">Surcharge</div>
+  <div class="g3">
+    <div class="field">
+      <label>Uniform Surcharge <span class="sym">q</span><span class="unit">(kPa)</span></label>
+      <input type="number" id="q_sur" value="0" min="0" step="0.5"/>
+      <span class="hint">Applied to full retained surface. 0 = none. Typical traffic: 5–10 kPa.</span>
+    </div>
+    <div class="field" style="grid-column:2/4;align-self:end">
+      <span class="hint" style="font-size:11.5px;line-height:1.7;">
+        Surcharge adds a <em>uniform</em> lateral pressure K·q over the full wall height, with resultant at H/2.<br>
+        This is combined with the triangular soil pressure (resultant at H/3) to give a blended eccentricity.
+      </span>
+    </div>
+  </div>
+
+  <hr/>
   <div class="sec">Structural Loads</div>
   <div class="g2">
     <div class="field">
@@ -223,7 +239,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
     </div>
     <div class="field" style="align-self:end">
       <span class="hint" style="font-size:11.5px;line-height:1.65;">
-        Lateral load V* is derived from the active earth pressure calculation.<br>
+        Lateral load V* is derived from the active earth pressure + surcharge.<br>
         N* is an additional structural load acting along the pile axis.
       </span>
     </div>
@@ -391,6 +407,7 @@ function runGeo() {
   const s_mm    = parseFloat(document.getElementById('spacing').value);
   const FOS     = parseFloat(document.getElementById('FOS').value);
   const Nstar   = parseFloat(document.getElementById('Nstar').value);
+  const q_sur   = parseFloat(document.getElementById('q_sur').value) || 0;
   const wallType= document.getElementById('wallType').value;
 
   // Validation
@@ -403,6 +420,7 @@ function runGeo() {
   if(isNaN(s_mm)||s_mm<=0)   errs.push('Enter valid pile spacing s.');
   if(isNaN(FOS)||FOS<1)       errs.push('Enter FOS ≥ 1.0.');
   if(isNaN(Nstar)||Nstar<0)   errs.push('Enter valid N* ≥ 0.');
+  if(isNaN(q_sur)||q_sur<0)   errs.push('Enter valid surcharge q ≥ 0 kPa.');
   if(errs.length){ setErr('err1',errs.join(' ')); return; }
 
   const H = H_mm/1000;   // m
@@ -420,14 +438,20 @@ function runGeo() {
     Kname = 'K₀ (at-rest)';
   }
 
-  // Active/at-rest pressure at base
+  // Active/at-rest pressure at base (soil only)
   const sigma_base = K * gamma * H;
 
-  // Horizontal force per pile (triangular distribution)
-  const Pa = 0.5 * K * gamma * H * H * s;
+  // Surcharge lateral pressure (uniform over full height)
+  const sigma_q = K * q_sur;  // kPa, uniform
 
-  // Eccentricity (resultant acts at H/3 above base for triangular)
-  const e = H/3;
+  // Horizontal force per pile — soil (triangular) + surcharge (rectangular)
+  const Pa_soil = 0.5 * K * gamma * H * H * s;  // kN/pile
+  const Pa_q    = K * q_sur * H * s;             // kN/pile
+  const Pa      = Pa_soil + Pa_q;                // total
+
+  // Eccentricity: blended resultant height above base
+  // soil: H/3,  surcharge: H/2
+  const e = Pa > 0 ? (Pa_soil*(H/3) + Pa_q*(H/2)) / Pa : H/3;
 
   // Moment at passive ground level
   const M_ground = Pa * e;
@@ -463,15 +487,19 @@ function runGeo() {
   const L_total = H + L_adopt;
 
   // Store for tab 2
-  GEO = { gamma, phi_deg, K, Kname, Cu, H, H_mm, s, s_mm, FOS, Nstar, wallType,
-          sigma_base, Pa, e, M_ground, pu, ns, D_ref, L_calc, L_adopt, y0, M_max, L_total };
+  GEO = { gamma, phi_deg, K, Kname, Cu, H, H_mm, s, s_mm, FOS, Nstar, q_sur, wallType,
+          sigma_base, sigma_q, Pa_soil, Pa_q, Pa, e, M_ground, pu, ns, D_ref,
+          L_calc, L_adopt, y0, M_max, L_total };
 
   // ── Render outputs ──
   document.getElementById('outEP').innerHTML =
     outCell(Kname, fmt(K,4), '—') +
-    outCell('σa at Base', fmt(sigma_base,2), 'kPa') +
-    outCell('Pa per Pile', fmt(Pa,2), 'kN', true) +
-    outCell('Eccentricity e', fmt(e,3), 'm');
+    outCell('σa at Base (soil)', fmt(sigma_base,2), 'kPa') +
+    (q_sur > 0 ? outCell('K·q Surcharge', fmt(sigma_q,2), 'kPa') : outCell('Surcharge', '—', 'none')) +
+    outCell('Pa — Soil', fmt(Pa_soil,2), 'kN') +
+    (q_sur > 0 ? outCell('Pa — Surcharge', fmt(Pa_q,2), 'kN') : '') +
+    outCell('Pa Total per Pile', fmt(Pa,2), 'kN', true) +
+    outCell('Resultant Height e', fmt(e,3), 'm (above base)');
 
   document.getElementById('outEmbed').innerHTML =
     outCell('Broms pu', fmt(pu,2), 'kN/m') +
@@ -488,7 +516,7 @@ function runGeo() {
   const e_mm = Math.round(e*1000);
   document.getElementById('outTest').innerHTML =
     outCell('Design Lateral Load V*', fmt(Pa,2), 'kN', true) +
-    outCell('Load Height Above Ground', e_mm, 'mm (= H/3)', true) +
+    outCell('Load Height Above Ground', e_mm, q_sur > 0 ? 'mm (blended e)' : 'mm (= H/3)', true) +
     outCell('Failure Displacement (Lateral)', '25', 'mm') +
     outCell('Max Test Load (150%)', fmt(Pa*1.5,2), 'kN', true);
 
@@ -529,14 +557,27 @@ function runGeo() {
        ? `${Kname} = (1−sinφ')/(1+sinφ') = (1−sin${phi_deg}°)/(1+sin${phi_deg}°)`
        : `${Kname} = 1−sinφ' = 1−sin${phi_deg}°`,
      fmt(K,4), null],
-    ['Pressure at base',
+    ['Soil pressure at base',
      `σa = K × γ × H = ${fmt(K,3)} × ${gamma} × ${fmt(H,3)}`,
      fmt(sigma_base,2)+' kPa', null],
-    ['Active force per pile',
-     `Pa = ½ × K × γ × H² × s\n   = ½ × ${fmt(K,3)} × ${gamma} × ${fmt(H,3)}² × ${fmt(s,3)}`,
+    ...(q_sur > 0 ? [['Surcharge lateral pressure',
+     `σq = K × q = ${fmt(K,3)} × ${q_sur}`,
+     fmt(sigma_q,2)+' kPa', null]] : []),
+    ['Soil force per pile (triangular)',
+     `Pa_soil = ½ × K × γ × H² × s\n   = ½ × ${fmt(K,3)} × ${gamma} × ${fmt(H,3)}² × ${fmt(s,3)}`,
+     fmt(Pa_soil,2)+' kN', null],
+    ...(q_sur > 0 ? [['Surcharge force per pile (uniform)',
+     `Pa_q = K × q × H × s\n   = ${fmt(K,3)} × ${q_sur} × ${fmt(H,3)} × ${fmt(s,3)}`,
+     fmt(Pa_q,2)+' kN', null]] : []),
+    ['Total lateral force per pile',
+     q_sur > 0
+       ? `Pa = Pa_soil + Pa_q = ${fmt(Pa_soil,2)} + ${fmt(Pa_q,2)}`
+       : `Pa = Pa_soil = ${fmt(Pa_soil,2)}`,
      fmt(Pa,2)+' kN', null],
-    ['Eccentricity (resultant)',
-     `e = H/3 = ${fmt(H,3)}/3`,
+    ['Resultant eccentricity e',
+     q_sur > 0
+       ? `e = (Pa_soil×H/3 + Pa_q×H/2) / Pa\n   = (${fmt(Pa_soil,2)}×${fmt(H/3,3)} + ${fmt(Pa_q,2)}×${fmt(H/2,3)}) / ${fmt(Pa,2)}`
+       : `e = H/3 = ${fmt(H,3)}/3`,
      fmt(e,4)+' m', null],
     ['Moment at ground level',
      `M = Pa × e = ${fmt(Pa,2)} × ${fmt(e,4)}`,
@@ -652,49 +693,4 @@ function populateScrewTab() {
       </div>
       <div class="rbar-wrap" style="margin-top:6px">
         <div class="rbar-top"><span>Moment M*/φMr</span><span>${(r.mRat*100).toFixed(0)}%</span></div>
-        <div class="rbar"><div class="rbar-fill ${mBarCls}" style="width:${mBarW}%"></div></div>
-      </div>
-    </div>`;
-  }).join('');
-
-  // ── Min section result banner ──
-  const minEl = document.getElementById('minResult');
-  if (minSection) {
-    minEl.style.display = 'block';
-    minEl.style.background = '#d1fae5';
-    minEl.style.border = '2px solid #059669';
-    minEl.style.color = '#065f46';
-    minEl.innerHTML = `<strong style="font-size:15px">&#9733; Minimum Adequate Section: ${minSection.sec.label}</strong><br/>
-      <span style="font-size:12.5px">φMr = ${fmt(minSection.phiMr)} kNm &nbsp;≥&nbsp; M* = ${fmt(M_max,3)} kNm &nbsp;|&nbsp;
-      φNs = ${fmt(minSection.phiNs)} kN &nbsp;≥&nbsp; N* = ${fmt(Nstar)} kN &nbsp;|&nbsp;
-      Moment utilisation: ${(minSection.mRat*100).toFixed(0)}%</span>`;
-  } else {
-    minEl.style.display = 'block';
-    minEl.style.background = '#fee2e2';
-    minEl.style.border = '2px solid #dc2626';
-    minEl.style.color = '#991b1b';
-    minEl.innerHTML = `<strong style="font-size:15px">&#x26A0; No adequate section found in CHS &gt; 76×4 New Complete range.</strong><br/>
-      <span style="font-size:12.5px">All three sections fail the combined action check. Review design loads or contact StopDigging for specialist advice.</span>`;
-  }
-
-  // ── Comparison table ──
-  document.getElementById('compBody').innerHTML = results.map(r => {
-    const isMin = minSection && r.sec.id === minSection.sec.id;
-    const style = isMin ? ' style="background:#d1fae5;font-weight:700"' : '';
-    return `<tr${style}>
-      <td>${r.sec.label}${isMin?' &#9733;':''}</td>
-      <td style="text-align:right">${fmt(r.Ns)}</td>
-      <td style="text-align:right">${fmt(r.Ms)}</td>
-      <td style="text-align:right">${fmt(r.phiNs)}</td>
-      <td style="text-align:right">${fmt(r.phiMs)}</td>
-      <td style="text-align:right">${fmt(r.phiMr)}</td>
-      <td style="text-align:right">${fmt(M_max,3)}</td>
-      <td style="text-align:center"><span class="tag ${r.axOK?'ok':'ng'}">${r.axOK?'OK':'FAIL'}</span></td>
-      <td style="text-align:center"><span class="tag ${r.momOK?'ok':'ng'}">${r.momOK?'OK':'FAIL'}</span></td>
-      <td style="text-align:center"><span class="tag ${r.pass?'ok':'ng'}">${r.pass?'PASS':'FAIL'}</span></td>
-    </tr>`;
-  }).join('');
-}
-</script>
-</body>
-</html>
+        <div class="rbar"><div class="rbar-fill ${mBar
