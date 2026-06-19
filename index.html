@@ -399,6 +399,7 @@ function stepRow(lbl,fml,res,status){
 // ─── GEOTECHNICAL CALCULATION ─────────────────────────────────────────────────
 function runGeo() {
   setErr('err1','');
+  try {
 
   const gamma   = parseFloat(document.getElementById('gamma').value);
   const phi_deg = parseFloat(document.getElementById('phi').value);
@@ -529,17 +530,6 @@ function runGeo() {
     {pct:100, hold:'15 min', V:Pa*1.00},
     {pct:150, hold:'15 min', V:Pa*1.50},
   ];
-  document.getElementById('testSchedule').innerHTML =
-    steps.map((s,i) => `<tr${i%2===1?' style="background:#f7fafc"':''}>
-      <td class="lbl">${s.pct}% — ${s.pct<=50?'Pre-load increment':'${s.pct===75?"Working load approach":s.pct===100?"Design load":"Proof / failure load"}'}</td>
-      <td class="fml">${s.pct}% × ${fmt(Pa,2)} kN</td>
-      <td class="res">${fmt(s.V,2)} kN</td>
-      <td class="sta" style="text-align:left;color:#4b5e70;font-size:12px">${s.hold}</td>
-    </tr>`
-    // fix template literal issue — build rows cleanly
-    ).join('');
-
-  // Redo with clean logic
   const schedLabels = {10:'Pre-load increment',25:'Pre-load increment',50:'Pre-load increment',
                         75:'Working load approach',100:'Design load',150:'Proof / failure load'};
   document.getElementById('testSchedule').innerHTML =
@@ -608,6 +598,10 @@ function runGeo() {
   document.getElementById('geoSteps').innerHTML = rows.map(r => stepRow(...r)).join('');
   document.getElementById('geoResults').style.display = 'block';
   document.getElementById('geoResults').scrollIntoView({behavior:'smooth',block:'nearest'});
+  } catch(err) {
+    setErr('err1', 'Calculation error: ' + err.message + ' — check all inputs are filled correctly.');
+    console.error(err);
+  }
 }
 
 // ─── GROUNDSCREW SELECTION ────────────────────────────────────────────────────
@@ -693,4 +687,49 @@ function populateScrewTab() {
       </div>
       <div class="rbar-wrap" style="margin-top:6px">
         <div class="rbar-top"><span>Moment M*/φMr</span><span>${(r.mRat*100).toFixed(0)}%</span></div>
-        <div class="rbar"><div class="rbar-fill ${mBar
+        <div class="rbar"><div class="rbar-fill ${mBarCls}" style="width:${mBarW}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Min section result banner ──
+  const minEl = document.getElementById('minResult');
+  if (minSection) {
+    minEl.style.display = 'block';
+    minEl.style.background = '#d1fae5';
+    minEl.style.border = '2px solid #059669';
+    minEl.style.color = '#065f46';
+    minEl.innerHTML = `<strong style="font-size:15px">&#9733; Minimum Adequate Section: ${minSection.sec.label}</strong><br/>
+      <span style="font-size:12.5px">φMr = ${fmt(minSection.phiMr)} kNm &nbsp;≥&nbsp; M* = ${fmt(M_max,3)} kNm &nbsp;|&nbsp;
+      φNs = ${fmt(minSection.phiNs)} kN &nbsp;≥&nbsp; N* = ${fmt(Nstar)} kN &nbsp;|&nbsp;
+      Moment utilisation: ${(minSection.mRat*100).toFixed(0)}%</span>`;
+  } else {
+    minEl.style.display = 'block';
+    minEl.style.background = '#fee2e2';
+    minEl.style.border = '2px solid #dc2626';
+    minEl.style.color = '#991b1b';
+    minEl.innerHTML = `<strong style="font-size:15px">&#x26A0; No adequate section found in CHS range.</strong><br/>
+      <span style="font-size:12.5px">All sections fail the combined action check. Review design loads or contact StopDigging for specialist advice.</span>`;
+  }
+
+  // ── Comparison table ──
+  document.getElementById('compBody').innerHTML = results.map(r => {
+    const isMin = minSection && r.sec.id === minSection.sec.id;
+    const style = isMin ? ' style="background:#d1fae5;font-weight:700"' : '';
+    return `<tr${style}>
+      <td>${r.sec.label}${isMin?' &#9733;':''}</td>
+      <td style="text-align:right">${fmt(r.Ns)}</td>
+      <td style="text-align:right">${fmt(r.Ms)}</td>
+      <td style="text-align:right">${fmt(r.phiNs)}</td>
+      <td style="text-align:right">${fmt(r.phiMs)}</td>
+      <td style="text-align:right">${fmt(r.phiMr)}</td>
+      <td style="text-align:right">${fmt(M_max,3)}</td>
+      <td style="text-align:center"><span class="tag ${r.axOK?'ok':'ng'}">${r.axOK?'OK':'FAIL'}</span></td>
+      <td style="text-align:center"><span class="tag ${r.momOK?'ok':'ng'}">${r.momOK?'OK':'FAIL'}</span></td>
+      <td style="text-align:center"><span class="tag ${r.pass?'ok':'ng'}">${r.pass?'PASS':'FAIL'}</span></td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
