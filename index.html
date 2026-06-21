@@ -202,8 +202,8 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
   <div class="g3">
     <div class="field">
       <label>Retained Height <span class="sym">H</span><span class="unit">(mm)</span></label>
-      <input type="number" id="H" value="1000" min="100" max="1600" step="50"/>
-      <span class="hint">≤1200 mm — Table 1; 1201–1600 mm — extrapolated ⁽ᵉ⁾</span>
+      <input type="number" id="H" value="1000" min="100" max="2000" step="50"/>
+      <span class="hint">≤1200 mm — Table 1; 1201–2000 mm — extrapolated ⁽ᵉ⁾</span>
     </div>
     <div class="field">
       <label>Pile Spacing <span class="sym">s</span><span class="unit">(mm c/c)</span></label>
@@ -237,19 +237,19 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
   <div class="sec">Ground Slopes</div>
   <div class="g3">
     <div class="field">
-      <label>Back Slope <span class="sym">β</span><span class="unit">(°)</span></label>
-      <input type="number" id="beta" value="0" min="0" max="30" step="1"/>
-      <span class="hint">Retained fill slopes upward behind wall. 0 = level. Must be &lt; φ'.</span>
+      <label>Back Slope <span class="sym">β</span><span class="unit">(%)</span></label>
+      <input type="number" id="beta" value="0" min="0" max="100" step="1"/>
+      <span class="hint">Retained fill slopes upward behind wall. 0 = level. Enter as % grade (e.g. 10 = 1:10). Must be less than tan(φ')×100.</span>
     </div>
     <div class="field">
-      <label>Front Slope <span class="sym">α</span><span class="unit">(°)</span></label>
-      <input type="number" id="alpha" value="0" min="0" max="45" step="1"/>
-      <span class="hint">Ground slopes downward in front of wall. 0 = level. Reduces passive resistance.</span>
+      <label>Front Slope <span class="sym">α</span><span class="unit">(%)</span></label>
+      <input type="number" id="alpha" value="0" min="0" max="100" step="1"/>
+      <span class="hint">Ground slopes downward in front of wall. 0 = level. Enter as % grade (e.g. 10 = 1:10). Reduces passive resistance.</span>
     </div>
     <div class="field" style="align-self:end">
       <span class="hint" style="font-size:11.5px;line-height:1.7;">
         Back slope modifies Ka via Rankine inclined formula.<br>
-        Front slope reduces Broms p<sub>u</sub> by cos²α (conservative). Both slopes trigger Engineering Required.
+        Front slope reduces Broms p<sub>u</sub> by cos²α (conservative). Slopes &gt; 10% grade trigger Engineering Required.
       </span>
     </div>
   </div>
@@ -321,7 +321,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 
     <div class="sec">Combined Action Check — All Sections (CHS &gt; 76×4, New Complete)</div>
     <p style="font-size:12px;color:#5c7a94;margin-bottom:14px;line-height:1.6">
-      Moment check: M* &nbsp;≤&nbsp; φM<sub>s</sub>. &nbsp;Height bracket: ≤600 mm → 600 mm column; 601–1200 mm → 1200 mm column; 1201–1600 mm → 1600 mm column ⁽ᵉ⁾.<br/>
+      Moment check: M* &nbsp;≤&nbsp; φM<sub>s</sub>. &nbsp;Height bracket: ≤600 mm → 600 mm column; 601–1200 mm → 1200 mm column; 1201–1600 mm → 1600 mm column ⁽ᵉ⁾; 1601–2000 mm → 2000 mm column ⁽ᵉ⁾.<br/>
       <strong>⁽ᶜ⁾</strong> CHS 140×4 capacities calculated from first principles (NZS 3404, fy = 235 MPa) — not listed in Design Guide v7.0; verify with StopDigging before use.&nbsp;
       <strong>⁽ᵉ⁾</strong> 1600 mm Ns values extrapolated beyond Table 1 scope using cubic capacity reduction model (f(H) = 1 − c·H³) calibrated to Table 1 at 600 mm &amp; 1200 mm. Ms values (section property) unchanged. Treat with additional engineering judgement.
     </p>
@@ -351,7 +351,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
       Embedment FOS applied to passive resistance. Moment check: M* ≤ φMs (no axial load in this calculator).
       <strong>CHS 140×4</strong> section capacities calculated per NZS 3404 Clause 6.2 (A<sub>n</sub> = 1709 mm², Z<sub>e</sub> = 56,483 mm³, f<sub>y</sub> = 235 MPa);
       height reduction factors (×0.995 at 600 mm, ×0.960 at 1200 mm) derived from Table 1 pattern — not independently tested by StopDigging.
-      <strong>1600 mm height bracket ⁽ᵉ⁾:</strong> Ns values extrapolated using f(H) = 1 − c·H³ (c = 2.315×10⁻¹¹ mm⁻³), calibrated exactly to Table 1 at H = 600 mm and 1200 mm; factor at 1600 mm = 0.905 × Ns_raw.
+      <strong>1600 mm and 2000 mm height brackets ⁽ᵉ⁾:</strong> Ns values extrapolated using f(H) = 1 − c·H³ (c = 2.315×10⁻¹¹ mm⁻³), calibrated exactly to Table 1 at H = 600 mm and 1200 mm; factor at 1600 mm = 0.905 × Ns_raw; factor at 2000 mm = 0.815 × Ns_raw.
       Ms section capacities are height-independent (no LTB for CHS) and unchanged at all heights.
       Verify on-site with StopDigging static pile test before installation.
     </div>
@@ -365,13 +365,14 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 <script>
 // ─── Table 1 data: New (Complete Section), sections > 76x4 ───────────────────
 // Order: smallest adequate → largest (89x4, 89x5, 114x4)
-// t1600 values extrapolated via cubic fit f(H)=1−c·H³ calibrated to Table 1
+// t1600 and t2000 values extrapolated via cubic fit f(H)=1−c·H³ calibrated to Table 1
+// f(600)=0.995, f(1200)=0.960, f(1600)=0.905, f(2000)=0.815
 // (exact at 600 mm & 1200 mm; 1600 mm is beyond table scope — use with caution)
 const SECTIONS = [
-  { id:'76x4',  label:'CHS 76 × 4',  t600:{ Ns:211.6, Ms:3.6  }, t1200:{ Ns:204.1, Ms:3.6  }, t1600:{ Ns:192.5, Ms:3.6  } },
-  { id:'89x4',  label:'CHS 89 × 4',  t600:{ Ns:249.8, Ms:5.1  }, t1200:{ Ns:241.0, Ms:5.1  }, t1600:{ Ns:227.2, Ms:5.1  } },
-  { id:'114x4', label:'CHS 114 × 4', t600:{ Ns:323.2, Ms:8.6  }, t1200:{ Ns:311.8, Ms:8.6  }, t1600:{ Ns:294.0, Ms:8.6  } },
-  { id:'140x4', label:'CHS 140 × 4 ⁽ᶜ⁾', t600:{ Ns:399.6, Ms:13.3 }, t1200:{ Ns:385.5, Ms:13.3 }, t1600:{ Ns:363.5, Ms:13.3 }, calc:true },
+  { id:'76x4',  label:'CHS 76 × 4',  t600:{ Ns:211.6, Ms:3.6  }, t1200:{ Ns:204.1, Ms:3.6  }, t1600:{ Ns:192.5, Ms:3.6  }, t2000:{ Ns:173.3, Ms:3.6  } },
+  { id:'89x4',  label:'CHS 89 × 4',  t600:{ Ns:249.8, Ms:5.1  }, t1200:{ Ns:241.0, Ms:5.1  }, t1600:{ Ns:227.2, Ms:5.1  }, t2000:{ Ns:204.6, Ms:5.1  } },
+  { id:'114x4', label:'CHS 114 × 4', t600:{ Ns:323.2, Ms:8.6  }, t1200:{ Ns:311.8, Ms:8.6  }, t1600:{ Ns:294.0, Ms:8.6  }, t2000:{ Ns:264.7, Ms:8.6  } },
+  { id:'140x4', label:'CHS 140 × 4 ⁽ᶜ⁾', t600:{ Ns:399.6, Ms:13.3 }, t1200:{ Ns:385.5, Ms:13.3 }, t1600:{ Ns:363.5, Ms:13.3 }, t2000:{ Ns:327.2, Ms:13.3 }, calc:true },
 ];
 const PHI = 0.9;
 
@@ -416,8 +417,8 @@ function runGeo() {
   const s_mm    = parseFloat(document.getElementById('spacing').value);
   const FOS     = parseFloat(document.getElementById('FOS').value);
   const q_sur    = parseFloat(document.getElementById('q_sur').value) || 0;
-  const beta_deg = parseFloat(document.getElementById('beta').value) || 0;
-  const alpha_deg= parseFloat(document.getElementById('alpha').value) || 0;
+  const beta_pct  = parseFloat(document.getElementById('beta').value)  || 0;
+  const alpha_pct = parseFloat(document.getElementById('alpha').value) || 0;
   const wallType= document.getElementById('wallType').value;
 
   // Validation
@@ -426,26 +427,50 @@ function runGeo() {
   if(isNaN(phi_deg)||phi_deg<=0||phi_deg>=90) errs.push('Enter valid φ\' (0–90°).');
   if(isNaN(Cu)||Cu<=0)        errs.push('Enter valid Cu > 0 kPa.');
   if(isNaN(H_mm)||H_mm<=0)   errs.push('Enter valid retained height H.');
-  if(H_mm>1600)               errs.push('H > 1600 mm exceeds calculator scope. Maximum 1600 mm.');
+  if(H_mm>2000)               errs.push('H > 2000 mm exceeds calculator scope. Maximum 2000 mm.');
   if(isNaN(s_mm)||s_mm<=0)   errs.push('Enter valid pile spacing s.');
   if(isNaN(FOS)||FOS<1)       errs.push('Enter FOS ≥ 1.0.');
-  if(beta_deg < 0 || beta_deg >= phi_deg) errs.push('Back slope β must be 0° to less than φ\' (' + phi_deg + '°).');
-  if(alpha_deg < 0 || alpha_deg > 45)  errs.push('Front slope α must be 0–45°.');
+  const maxBetaPct = +(Math.tan(phi_deg*Math.PI/180)*100).toFixed(1);
+  if(beta_pct < 0 || beta_pct >= maxBetaPct) errs.push('Back slope β must be 0–' + maxBetaPct + '% (must be less than tan(φ\') = ' + maxBetaPct + '%).');
+  if(alpha_pct < 0 || alpha_pct > 100) errs.push('Front slope α must be 0–100%.');
   if(isNaN(q_sur)||q_sur<0)   errs.push('Enter valid surcharge q ≥ 0 kPa.');
   if(errs.length){ setErr('err1',errs.join(' ')); return; }
 
   const H = H_mm/1000;   // m
   const s = s_mm/1000;   // m
 
-  const phi = phi_deg * Math.PI/180;
+  const phi   = phi_deg  * Math.PI/180;
+  const beta  = Math.atan(beta_pct  / 100);  // radians from % grade
+  const alpha = Math.atan(alpha_pct / 100);  // radians from % grade
+
+  // ── Engineering Required check ──
+  const engReasons = [];
+  if(H_mm > 1500)        engReasons.push('H > 1500 mm');
+  if(q_sur > 2.5)        engReasons.push('Surcharge q > 2.5 kPa');
+  if(wallType==='atrest') engReasons.push('At-rest (K₀) wall');
+  if(beta_pct > 10)      engReasons.push('Back slope β = ' + beta_pct + '% (> 10%)');
+  if(alpha_pct > 10)     engReasons.push('Front slope α = ' + alpha_pct + '% (> 10%)');
+  const engRequired = engReasons.length > 0;
+
+  // Render Engineering Required / OK banner
+  const engEl = document.getElementById('engRequired');
+  const engOkEl = document.getElementById('engOk');
+  if(engRequired){
+    engEl.style.display='block';
+    engEl.innerHTML='<strong>⚠ Engineering Input Required</strong>' + engReasons.map(r=>'<br/>• '+r).join('');
+    if(engOkEl) engOkEl.style.display='none';
+  } else {
+    engEl.style.display='none';
+    if(engOkEl){ engOkEl.style.display='block'; engOkEl.innerHTML='✔ Prescriptive design — no engineering input required for this configuration.'; }
+  }
 
   // Earth pressure coefficient
   let K, Kname, Ka_formula;
   if(wallType==='active'){
-    if(beta_deg > 0){
+    if(beta_pct > 0){
       const cosB = Math.cos(beta), cosP = Math.cos(phi);
       K = cosB*(cosB - Math.sqrt(cosB*cosB - cosP*cosP))/(cosB + Math.sqrt(cosB*cosB - cosP*cosP));
-      Kname = 'Ka (active, β='+beta_deg+'°)';
+      Kname = 'Ka (active, β='+beta_pct+'%)';
       Ka_formula = 'Rankine inclined';
     } else {
       K = (1-Math.sin(phi))/(1+Math.sin(phi));
@@ -513,7 +538,7 @@ function runGeo() {
   const testDispLabel = wallType === 'atrest' ? 'mm (= H/500)' : 'mm';
 
   GEO = { gamma, phi_deg, K, Kname, Cu, H, H_mm, s, s_mm, FOS, q_sur,
-          beta_deg, alpha_deg, wallType, engRequired, engReasons,
+          beta_pct, alpha_pct, wallType, engRequired, engReasons,
           sigma_base, sigma_q, Pa_soil, Pa_q, Pa, e, M_ground,
           pu, pu_flat, slopeFactor, ns, D_ref,
           L_calc, L_adopt, y0, M_max, L_total, testDisp, testDispLabel };
@@ -601,8 +626,8 @@ function runGeo() {
     ['Broms lateral resistance',
      `pu_flat = 9 × Cu × D = 9 × ${Cu} × ${D_ref}`,
      fmt(pu_flat,2)+' kN/m', null],
-    ...(alpha_deg>0 ? [['Front slope reduction (cos²α)',
-     `α = ${alpha_deg}°, cos²α = ${fmt(slopeFactor,4)}  →  pu = ${fmt(pu_flat,2)} × ${fmt(slopeFactor,4)}`,
+    ...(alpha_pct>0 ? [['Front slope reduction (cos²α)',
+     `α = ${alpha_pct}% (${fmt(Math.atan(alpha_pct/100)*180/Math.PI,1)}°), cos²α = ${fmt(slopeFactor,4)}  →  pu = ${fmt(pu_flat,2)} × ${fmt(slopeFactor,4)}`,
      fmt(pu,2)+' kN/m', null]] : []),
     ['Near-surface zone',
      `1.5D = 1.5 × ${D_ref}`,
@@ -646,8 +671,8 @@ function populateScrewTab() {
   const { Pa, M_max, H_mm, engRequired, engReasons } = GEO;
 
   // Height bracket for table lookup
-  const bracket = H_mm <= 600 ? 600 : H_mm <= 1200 ? 1200 : 1600;
-  const bracketExtrap = bracket === 1600;
+  const bracket = H_mm <= 600 ? 600 : H_mm <= 1200 ? 1200 : H_mm <= 1600 ? 1600 : 2000;
+  const bracketExtrap = bracket === 1600 || bracket === 2000;
 
   // Load summary (3 items — no N*)
   document.getElementById('loadBar').innerHTML = `
@@ -667,7 +692,7 @@ function populateScrewTab() {
   // Run checks — moment only (no axial load)
   let minSection = null;
   const results = SECTIONS.map(sec => {
-    const caps = bracket <= 600 ? sec.t600 : bracket <= 1200 ? sec.t1200 : sec.t1600;
+    const caps = bracket <= 600 ? sec.t600 : bracket <= 1200 ? sec.t1200 : bracket <= 1600 ? sec.t1600 : sec.t2000;
     const { Ns, Ms } = caps;
     const phiMs = PHI * Ms;
     const momOK = M_max <= phiMs;
@@ -714,38 +739,4 @@ function populateScrewTab() {
   const minEl = document.getElementById('minResult');
   if (minSection) {
     minEl.style.display = 'block';
-    minEl.style.background = '#d1fae5';
-    minEl.style.border = '2px solid #059669';
-    minEl.style.color = '#065f46';
-    minEl.innerHTML = `<strong style="font-size:15px">&#9733; Minimum Adequate Section: ${minSection.sec.label}</strong><br/>
-      <span style="font-size:12.5px">φMs = ${fmt(minSection.phiMs)} kNm &nbsp;≥&nbsp; M* = ${fmt(M_max,3)} kNm &nbsp;|&nbsp;
-      Moment utilisation: ${(minSection.mRat*100).toFixed(0)}%</span>`;
-  } else {
-    minEl.style.display = 'block';
-    minEl.style.background = '#fee2e2';
-    minEl.style.border = '2px solid #dc2626';
-    minEl.style.color = '#991b1b';
-    minEl.innerHTML = `<strong style="font-size:15px">&#x26A0; No adequate section found in CHS range.</strong><br/>
-      <span style="font-size:12.5px">All sections fail the moment check. Review design loads or contact StopDigging for specialist advice.</span>`;
-  }
-
-  // ── Comparison table ──
-  document.getElementById('compBody').innerHTML = results.map(r => {
-    const isMin = minSection && r.sec.id === minSection.sec.id;
-    const style = isMin ? ' style="background:#d1fae5;font-weight:700"' : '';
-    return `<tr${style}>
-      <td>${r.sec.label}${isMin?' &#9733;':''}</td>
-      <td style="text-align:right">${fmt(r.Ns)}</td>
-      <td style="text-align:right">${fmt(r.Ms)}</td>
-      <td style="text-align:right">—</td>
-      <td style="text-align:right">${fmt(r.phiMs)}</td>
-      <td style="text-align:right">${fmt(r.phiMs)}</td>
-      <td style="text-align:right">${fmt(M_max,3)}</td>
-      <td style="text-align:center"><span class="tag ${r.momOK?'ok':'ng'}">${r.momOK?'OK':'FAIL'}</span></td>
-      <td style="text-align:center"><span class="tag ${r.pass?'ok':'ng'}">${r.pass?'PASS':'FAIL'}</span></td>
-    </tr>`;
-  }).join('');
-}
-</script>
-</body>
-</html>
+  
