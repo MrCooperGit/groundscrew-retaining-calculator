@@ -114,7 +114,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 .rbar-fill.ng{background:linear-gradient(90deg,#dc2626,#f87171)}
 
 /* ── Load summary ── */
-.load-bar{background:#f0f6fc;border:1px solid #bdd7ee;border-radius:7px;padding:12px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.load-bar{background:#f0f6fc;border:1px solid #bdd7ee;border-radius:7px;padding:12px 16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
 .load-item .load-lbl{font-size:11px;color:#5c7a94;font-weight:600}
 .load-item .load-val{font-size:16px;font-weight:700;color:#1a3a5c;margin-top:2px}
 .load-item .load-unit{font-size:11px;color:#7a8fa0}
@@ -122,6 +122,9 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 /* ── Warnings ── */
 .warn-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:14px;display:none}
 .err-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:10px 14px;font-size:12px;color:#991b1b;margin-top:12px;display:none}
+.eng-req{background:#fef3c7;border:2px solid #f59e0b;border-radius:8px;padding:13px 16px;font-size:12.5px;color:#78350f;margin-top:14px;display:none;line-height:1.6}
+.eng-req strong{font-size:13.5px;display:block;margin-bottom:5px}
+.eng-ok{background:#d1fae5;border:2px solid #059669;border-radius:8px;padding:13px 16px;font-size:12.5px;color:#065f46;margin-top:14px;display:none}
 
 /* ── Footnote ── */
 .footnote{font-size:11px;color:#7a8fa0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:9px 13px;margin-top:18px;line-height:1.65}
@@ -229,23 +232,31 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
     </div>
   </div>
 
+
   <hr/>
-  <div class="sec">Structural Loads</div>
-  <div class="g2">
+  <div class="sec">Ground Slopes</div>
+  <div class="g3">
     <div class="field">
-      <label>Vertical (Axial) Load per Pile <span class="sym">N*</span><span class="unit">(kN, ULS)</span></label>
-      <input type="number" id="Nstar" value="0" min="0" step="0.5"/>
-      <span class="hint">Compressive load from structure above. Enter 0 if unknown / negligible.</span>
+      <label>Back Slope <span class="sym">β</span><span class="unit">(°)</span></label>
+      <input type="number" id="beta" value="0" min="0" max="30" step="1"/>
+      <span class="hint">Retained fill slopes upward behind wall. 0 = level. Must be &lt; φ'.</span>
+    </div>
+    <div class="field">
+      <label>Front Slope <span class="sym">α</span><span class="unit">(°)</span></label>
+      <input type="number" id="alpha" value="0" min="0" max="45" step="1"/>
+      <span class="hint">Ground slopes downward in front of wall. 0 = level. Reduces passive resistance.</span>
     </div>
     <div class="field" style="align-self:end">
-      <span class="hint" style="font-size:11.5px;line-height:1.65;">
-        Lateral load V* is derived from the active earth pressure + surcharge.<br>
-        N* is an additional structural load acting along the pile axis.
+      <span class="hint" style="font-size:11.5px;line-height:1.7;">
+        Back slope modifies Ka via Rankine inclined formula.<br>
+        Front slope reduces Broms p<sub>u</sub> by cos²α (conservative). Both slopes trigger Engineering Required.
       </span>
     </div>
   </div>
 
   <div class="err-box" id="err1"></div>
+  <div class="eng-req" id="engRequired"></div>
+  <div class="eng-ok" id="engOk"></div>
   <button class="btn-primary" onclick="runGeo()">▶ &nbsp;Run Geotechnical Calculation</button>
 
   <!-- ── Results panel (hidden until calc runs) ── -->
@@ -262,11 +273,10 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 
     <div class="sec" style="margin-top:20px">Static Load Test Parameters</div>
     <div class="out-grid" id="outTest"></div>
-    <p style="font-size:11.5px;color:#5c7a94;margin-top:8px;line-height:1.65;">
-      Apply test load horizontally at the stated height above ground (= H/3, resultant of triangular earth pressure distribution).
+    <p style="font-size:11.5px;color:#5c7a94;margin-top:8px;line-height:1.65;" id="testNote">
+      Apply test load horizontally at the stated height above ground (resultant eccentricity above pile toe).
       Testing at ground level (e = 0) under-represents the design moment and is not equivalent.
-      <strong>Failure criterion:</strong> lateral displacement ≥ 25 mm at any load increment, or plunging load-displacement response.
-      Compression/tension failure criterion: 5 mm.
+      <strong>Failure criterion:</strong> see Failure Displacement cell above. Compression/tension failure criterion: 5 mm.
     </p>
 
     <div class="sec" style="margin-top:16px">Load Schedule — per IPENZ Screw Pile Guidance (ISSN 1176-0907) / AS 2159 / ASTM D3689-07</div>
@@ -280,7 +290,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
       <tbody id="testSchedule"></tbody>
     </table>
     <p style="font-size:11px;color:#7a8fa0;margin-top:7px;line-height:1.6">
-      150% stage only applied if failure (lateral displacement ≥ 25 mm) has not been reached at 100%.
+      150% stage only applied if failure displacement has not been reached at 100%.
       Record load and displacement at end of each hold period. Plot load-displacement curve to confirm no plunging.
     </p>
 
@@ -311,8 +321,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 
     <div class="sec">Combined Action Check — All Sections (CHS &gt; 76×4, New Complete)</div>
     <p style="font-size:12px;color:#5c7a94;margin-bottom:14px;line-height:1.6">
-      φM<sub>r</sub> = φM<sub>s</sub> × (1 − N* / φN<sub>s</sub>) &nbsp;≥&nbsp; M*&nbsp; &amp;&nbsp;
-      N*&nbsp;≤&nbsp;φN<sub>s</sub>. &nbsp;Height bracket: ≤600 mm → 600 mm column; 601–1200 mm → 1200 mm column; 1201–1600 mm → 1600 mm column ⁽ᵉ⁾.<br/>
+      Moment check: M* &nbsp;≤&nbsp; φM<sub>s</sub>. &nbsp;Height bracket: ≤600 mm → 600 mm column; 601–1200 mm → 1200 mm column; 1201–1600 mm → 1600 mm column ⁽ᵉ⁾.<br/>
       <strong>⁽ᶜ⁾</strong> CHS 140×4 capacities calculated from first principles (NZS 3404, fy = 235 MPa) — not listed in Design Guide v7.0; verify with StopDigging before use.&nbsp;
       <strong>⁽ᵉ⁾</strong> 1600 mm Ns values extrapolated beyond Table 1 scope using cubic capacity reduction model (f(H) = 1 − c·H³) calibrated to Table 1 at 600 mm &amp; 1200 mm. Ms values (section property) unchanged. Treat with additional engineering judgement.
     </p>
@@ -329,8 +338,7 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
         <th>φNs (kN)</th><th>φMs (kNm)</th>
         <th>φMr (kNm)</th>
         <th>M* (kNm)</th>
-        <th>N* ≤ φNs</th>
-        <th>M* ≤ φMr</th>
+        <th>M* ≤ φMs</th>
         <th>Result</th>
       </tr></thead>
       <tbody id="compBody"></tbody>
@@ -339,8 +347,8 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
     <div class="footnote">
       <strong>References:</strong> StopDigging Ground Screw Foundation System Design Guide v7.0 (August 2024), Table 1 — Section Capacities (CHS 76×4, 89×4, 114×4).
       Combined action check per NZS 3404. Capacity reduction factor φ = 0.9.
-      Geotech lateral resistance: Broms (1964) cohesive method, p<sub>u</sub> = 9C<sub>u</sub>D.
-      Embedment FOS applied to passive resistance. N* = user-specified vertical load per pile.
+      Geotech lateral resistance: Broms (1964) cohesive method, p<sub>u</sub> = 9C<sub>u</sub>D (modified for front slope via cos²α).
+      Embedment FOS applied to passive resistance. Moment check: M* ≤ φMs (no axial load in this calculator).
       <strong>CHS 140×4</strong> section capacities calculated per NZS 3404 Clause 6.2 (A<sub>n</sub> = 1709 mm², Z<sub>e</sub> = 56,483 mm³, f<sub>y</sub> = 235 MPa);
       height reduction factors (×0.995 at 600 mm, ×0.960 at 1200 mm) derived from Table 1 pattern — not independently tested by StopDigging.
       <strong>1600 mm height bracket ⁽ᵉ⁾:</strong> Ns values extrapolated using f(H) = 1 − c·H³ (c = 2.315×10⁻¹¹ mm⁻³), calibrated exactly to Table 1 at H = 600 mm and 1200 mm; factor at 1600 mm = 0.905 × Ns_raw.
@@ -407,8 +415,9 @@ function runGeo() {
   const H_mm    = parseFloat(document.getElementById('H').value);
   const s_mm    = parseFloat(document.getElementById('spacing').value);
   const FOS     = parseFloat(document.getElementById('FOS').value);
-  const Nstar   = parseFloat(document.getElementById('Nstar').value);
-  const q_sur   = parseFloat(document.getElementById('q_sur').value) || 0;
+  const q_sur    = parseFloat(document.getElementById('q_sur').value) || 0;
+  const beta_deg = parseFloat(document.getElementById('beta').value) || 0;
+  const alpha_deg= parseFloat(document.getElementById('alpha').value) || 0;
   const wallType= document.getElementById('wallType').value;
 
   // Validation
@@ -420,7 +429,8 @@ function runGeo() {
   if(H_mm>1600)               errs.push('H > 1600 mm exceeds calculator scope. Maximum 1600 mm.');
   if(isNaN(s_mm)||s_mm<=0)   errs.push('Enter valid pile spacing s.');
   if(isNaN(FOS)||FOS<1)       errs.push('Enter FOS ≥ 1.0.');
-  if(isNaN(Nstar)||Nstar<0)   errs.push('Enter valid N* ≥ 0.');
+  if(beta_deg < 0 || beta_deg >= phi_deg) errs.push('Back slope β must be 0° to less than φ\' (' + phi_deg + '°).');
+  if(alpha_deg < 0 || alpha_deg > 45)  errs.push('Front slope α must be 0–45°.');
   if(isNaN(q_sur)||q_sur<0)   errs.push('Enter valid surcharge q ≥ 0 kPa.');
   if(errs.length){ setErr('err1',errs.join(' ')); return; }
 
@@ -430,13 +440,22 @@ function runGeo() {
   const phi = phi_deg * Math.PI/180;
 
   // Earth pressure coefficient
-  let K, Kname;
+  let K, Kname, Ka_formula;
   if(wallType==='active'){
-    K = (1-Math.sin(phi))/(1+Math.sin(phi));
-    Kname = 'Ka (active)';
+    if(beta_deg > 0){
+      const cosB = Math.cos(beta), cosP = Math.cos(phi);
+      K = cosB*(cosB - Math.sqrt(cosB*cosB - cosP*cosP))/(cosB + Math.sqrt(cosB*cosB - cosP*cosP));
+      Kname = 'Ka (active, β='+beta_deg+'°)';
+      Ka_formula = 'Rankine inclined';
+    } else {
+      K = (1-Math.sin(phi))/(1+Math.sin(phi));
+      Kname = 'Ka (active)';
+      Ka_formula = '(1−sinφ\')/(1+sinφ\')';
+    }
   } else {
     K = 1 - Math.sin(phi);
     Kname = 'K₀ (at-rest)';
+    Ka_formula = '1−sinφ\'';
   }
 
   // Active/at-rest pressure at base (soil only)
@@ -463,7 +482,9 @@ function runGeo() {
   // but actually pu is only used for embedment; we'll use D_screw for the Broms calc.
   // We'll use 89mm as the reference diameter for embedment calcs.
   const D_ref = 0.089; // m - smallest section in our table
-  const pu   = 9 * Cu * D_ref;  // kN/m
+  const pu_flat = 9 * Cu * D_ref;
+  const slopeFactor = Math.cos(alpha) * Math.cos(alpha);  // cos²α
+  const pu   = pu_flat * slopeFactor;
   const ns   = 1.5 * D_ref;     // near-surface zone, m
 
   // ── Quadratic for embedment (with FOS on pu) ──
@@ -471,11 +492,11 @@ function runGeo() {
   // Let u = L - ns
   // Pa(e + ns + u) = (pu/FOS)u²/2
   // (pu/FOS/2)u² - Pa·u - Pa(e+ns) = 0
-  const a = (pu/FOS)/2;
-  const b = -Pa;
-  const c = -Pa*(e+ns);
-  const disc = b*b - 4*a*c;
-  const u    = (-b + Math.sqrt(disc))/(2*a);
+  const qa = (pu/FOS)/2;
+  const qb = -Pa;
+  const qc = -Pa*(e+ns);
+  const disc = qb*qb - 4*qa*qc;
+  const u    = (-qb + Math.sqrt(disc))/(2*qa);
   const L_calc  = u + ns;   // m
   const L_calc_r50 = Math.ceil(L_calc*1000/50)*50/1000; // round up to nearest 50mm
   const L_adopt = Math.max(L_calc_r50, H); // minimum embedment = retained height H
@@ -488,9 +509,14 @@ function runGeo() {
   const L_total = H + L_adopt;
 
   // Store for tab 2
-  GEO = { gamma, phi_deg, K, Kname, Cu, H, H_mm, s, s_mm, FOS, Nstar, q_sur, wallType,
-          sigma_base, sigma_q, Pa_soil, Pa_q, Pa, e, M_ground, pu, ns, D_ref,
-          L_calc, L_adopt, y0, M_max, L_total };
+  const testDisp      = wallType === 'atrest' ? +(H_mm/500).toFixed(1) : 25;
+  const testDispLabel = wallType === 'atrest' ? 'mm (= H/500)' : 'mm';
+
+  GEO = { gamma, phi_deg, K, Kname, Cu, H, H_mm, s, s_mm, FOS, q_sur,
+          beta_deg, alpha_deg, wallType, engRequired, engReasons,
+          sigma_base, sigma_q, Pa_soil, Pa_q, Pa, e, M_ground,
+          pu, pu_flat, slopeFactor, ns, D_ref,
+          L_calc, L_adopt, y0, M_max, L_total, testDisp, testDispLabel };
 
   // ── Render outputs ──
   document.getElementById('outEP').innerHTML =
@@ -518,7 +544,7 @@ function runGeo() {
   document.getElementById('outTest').innerHTML =
     outCell('Design Lateral Load V*', fmt(Pa,2), 'kN', true) +
     outCell('Load Height Above Ground', e_mm, q_sur > 0 ? 'mm (blended e)' : 'mm (= H/3)', true) +
-    outCell('Failure Displacement (Lateral)', '25', 'mm') +
+    outCell('Failure Displacement (Lateral)', testDisp, testDispLabel) +
     outCell('Max Test Load (150%)', fmt(Pa*1.5,2), 'kN', true);
 
   // Load schedule table
@@ -573,8 +599,11 @@ function runGeo() {
      `M = Pa × e = ${fmt(Pa,2)} × ${fmt(e,4)}`,
      fmt(M_ground,3)+' kNm', null],
     ['Broms lateral resistance',
-     `pu = 9 × Cu × D = 9 × ${Cu} × ${D_ref}  (D=89 mm ref.)`,
-     fmt(pu,2)+' kN/m', null],
+     `pu_flat = 9 × Cu × D = 9 × ${Cu} × ${D_ref}`,
+     fmt(pu_flat,2)+' kN/m', null],
+    ...(alpha_deg>0 ? [['Front slope reduction (cos²α)',
+     `α = ${alpha_deg}°, cos²α = ${fmt(slopeFactor,4)}  →  pu = ${fmt(pu_flat,2)} × ${fmt(slopeFactor,4)}`,
+     fmt(pu,2)+' kN/m', null]] : []),
     ['Near-surface zone',
      `1.5D = 1.5 × ${D_ref}`,
      fmt(ns*1000,1)+' mm', null],
@@ -614,37 +643,37 @@ function populateScrewTab() {
   document.getElementById('warn2').style.display = 'none';
   document.getElementById('screw2').style.display = 'block';
 
-  const { Pa, M_max, Nstar, H_mm } = GEO;
+  const { Pa, M_max, H_mm, engRequired, engReasons } = GEO;
 
   // Height bracket for table lookup
   const bracket = H_mm <= 600 ? 600 : H_mm <= 1200 ? 1200 : 1600;
   const bracketExtrap = bracket === 1600;
 
-  // Load summary
+  // Load summary (3 items — no N*)
   document.getElementById('loadBar').innerHTML = `
     <div class="load-item"><div class="load-lbl">Lateral Load V*</div>
       <div class="load-val">${fmt(Pa,2)}</div><div class="load-unit">kN</div></div>
     <div class="load-item"><div class="load-lbl">Bending Moment M*</div>
       <div class="load-val">${fmt(M_max,3)}</div><div class="load-unit">kNm</div></div>
-    <div class="load-item"><div class="load-lbl">Axial Load N*</div>
-      <div class="load-val">${fmt(Nstar,2)}</div><div class="load-unit">kN</div></div>
     <div class="load-item"><div class="load-lbl">Table Height Bracket</div>
-      <div class="load-val">${bracket}</div><div class="load-unit">mm${bracketExtrap?' ⁽ᵉ⁾':''}</div></div>`;
+      <div class="load-val">${bracket}</div><div class="load-unit">mm${bracketExtrap?' ⁽ᵉ⁾':''}</div>
+    </div>
+    <div class="load-item" style="grid-column:1/-1;padding-top:6px">
+      ${engRequired
+        ? '<span style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:5px;padding:3px 10px;font-size:12px;color:#78350f;font-weight:700">⚠ Engineering Required: ' + engReasons.join(' · ') + '</span>'
+        : '<span style="background:#d1fae5;border:1.5px solid #059669;border-radius:5px;padding:3px 10px;font-size:12px;color:#065f46;font-weight:700">✓ Prescriptive design — no engineering triggers</span>'}
+    </div>`;
 
-  // Run checks for all sections
+  // Run checks — moment only (no axial load)
   let minSection = null;
   const results = SECTIONS.map(sec => {
     const caps = bracket <= 600 ? sec.t600 : bracket <= 1200 ? sec.t1200 : sec.t1600;
     const { Ns, Ms } = caps;
-    const phiNs = PHI * Ns;
     const phiMs = PHI * Ms;
-    const phiMr = phiMs * (1 - Nstar / phiNs);
-    const axOK  = Nstar <= phiNs;
-    const momOK = M_max <= phiMr;
-    const pass  = axOK && momOK;
-    const axRat = Nstar / phiNs;
-    const mRat  = M_max / phiMr;
-    return { sec, Ns, Ms, phiNs, phiMs, phiMr, axOK, momOK, pass, axRat, mRat };
+    const momOK = M_max <= phiMs;
+    const pass  = momOK;
+    const mRat  = M_max / phiMs;
+    return { sec, Ns, Ms, phiMs, momOK, pass, mRat };
   });
 
   // Minimum = first (smallest) that passes
@@ -657,36 +686,25 @@ function populateScrewTab() {
     const badge = isMin ? '<span class="sec-badge minimum">&#9733; MINIMUM</span>'
                 : r.pass ? '<span class="sec-badge pass">PASS</span>'
                 : '<span class="sec-badge fail">FAIL</span>';
-
-    const axCls  = r.axOK  ? 'ok' : 'ng';
     const momCls = r.momOK ? 'ok' : 'ng';
-    const axBarW  = Math.min(r.axRat,1)*100;
-    const mBarW   = Math.min(r.mRat,1)*100;
-    const axBarCls  = r.axRat  > 1 ? 'ng' : r.axRat  > 0.8 ? 'warn' : 'ok';
-    const mBarCls   = r.mRat   > 1 ? 'ng' : r.mRat   > 0.8 ? 'warn' : 'ok';
+    const mBarW  = Math.min(r.mRat,1)*100;
+    const mBarCls = r.mRat > 1 ? 'ng' : r.mRat > 0.8 ? 'warn' : 'ok';
 
     return `<div class="${cls}">
       <div class="sec-card-header">
         <span class="sec-size">${r.sec.label}</span>${badge}
       </div>
       <div class="sec-rows">
-        <div class="sec-row"><span class="sec-row-lbl">Ns</span><span class="sec-row-val">${fmt(r.Ns)} kN</span></div>
         <div class="sec-row"><span class="sec-row-lbl">Ms</span><span class="sec-row-val">${fmt(r.Ms)} kNm</span></div>
-        <div class="sec-row"><span class="sec-row-lbl">φNs</span><span class="sec-row-val">${fmt(r.phiNs)} kN</span></div>
         <div class="sec-row"><span class="sec-row-lbl">φMs</span><span class="sec-row-val">${fmt(r.phiMs)} kNm</span></div>
-        <div class="sec-row"><span class="sec-row-lbl">φMr (reduced)</span><span class="sec-row-val ${momCls}">${fmt(r.phiMr)} kNm</span></div>
         <div class="sec-row"><span class="sec-row-lbl">M* demand</span><span class="sec-row-val">${fmt(M_max,3)} kNm</span></div>
-        <div class="sec-row"><span class="sec-row-lbl">Axial check</span>
-          <span class="sec-row-val ${axCls}">${r.axOK ? '✓ OK' : '✗ FAIL'}</span></div>
         <div class="sec-row"><span class="sec-row-lbl">Moment check</span>
           <span class="sec-row-val ${momCls}">${r.momOK ? '✓ OK' : '✗ FAIL'}</span></div>
+        <div class="sec-row"><span class="sec-row-lbl">Utilisation</span>
+          <span class="sec-row-val ${momCls}">${(r.mRat*100).toFixed(0)}%</span></div>
       </div>
-      <div class="rbar-wrap">
-        <div class="rbar-top"><span>Axial N*/φNs</span><span>${(r.axRat*100).toFixed(0)}%</span></div>
-        <div class="rbar"><div class="rbar-fill ${axBarCls}" style="width:${axBarW}%"></div></div>
-      </div>
-      <div class="rbar-wrap" style="margin-top:6px">
-        <div class="rbar-top"><span>Moment M*/φMr</span><span>${(r.mRat*100).toFixed(0)}%</span></div>
+      <div class="rbar-wrap" style="margin-top:8px">
+        <div class="rbar-top"><span>Moment M*/φMs</span><span>${(r.mRat*100).toFixed(0)}%</span></div>
         <div class="rbar"><div class="rbar-fill ${mBarCls}" style="width:${mBarW}%"></div></div>
       </div>
     </div>`;
@@ -700,8 +718,7 @@ function populateScrewTab() {
     minEl.style.border = '2px solid #059669';
     minEl.style.color = '#065f46';
     minEl.innerHTML = `<strong style="font-size:15px">&#9733; Minimum Adequate Section: ${minSection.sec.label}</strong><br/>
-      <span style="font-size:12.5px">φMr = ${fmt(minSection.phiMr)} kNm &nbsp;≥&nbsp; M* = ${fmt(M_max,3)} kNm &nbsp;|&nbsp;
-      φNs = ${fmt(minSection.phiNs)} kN &nbsp;≥&nbsp; N* = ${fmt(Nstar)} kN &nbsp;|&nbsp;
+      <span style="font-size:12.5px">φMs = ${fmt(minSection.phiMs)} kNm &nbsp;≥&nbsp; M* = ${fmt(M_max,3)} kNm &nbsp;|&nbsp;
       Moment utilisation: ${(minSection.mRat*100).toFixed(0)}%</span>`;
   } else {
     minEl.style.display = 'block';
@@ -709,7 +726,7 @@ function populateScrewTab() {
     minEl.style.border = '2px solid #dc2626';
     minEl.style.color = '#991b1b';
     minEl.innerHTML = `<strong style="font-size:15px">&#x26A0; No adequate section found in CHS range.</strong><br/>
-      <span style="font-size:12.5px">All sections fail the combined action check. Review design loads or contact StopDigging for specialist advice.</span>`;
+      <span style="font-size:12.5px">All sections fail the moment check. Review design loads or contact StopDigging for specialist advice.</span>`;
   }
 
   // ── Comparison table ──
@@ -720,11 +737,10 @@ function populateScrewTab() {
       <td>${r.sec.label}${isMin?' &#9733;':''}</td>
       <td style="text-align:right">${fmt(r.Ns)}</td>
       <td style="text-align:right">${fmt(r.Ms)}</td>
-      <td style="text-align:right">${fmt(r.phiNs)}</td>
+      <td style="text-align:right">—</td>
       <td style="text-align:right">${fmt(r.phiMs)}</td>
-      <td style="text-align:right">${fmt(r.phiMr)}</td>
+      <td style="text-align:right">${fmt(r.phiMs)}</td>
       <td style="text-align:right">${fmt(M_max,3)}</td>
-      <td style="text-align:center"><span class="tag ${r.axOK?'ok':'ng'}">${r.axOK?'OK':'FAIL'}</span></td>
       <td style="text-align:center"><span class="tag ${r.momOK?'ok':'ng'}">${r.momOK?'OK':'FAIL'}</span></td>
       <td style="text-align:center"><span class="tag ${r.pass?'ok':'ng'}">${r.pass?'PASS':'FAIL'}</span></td>
     </tr>`;
