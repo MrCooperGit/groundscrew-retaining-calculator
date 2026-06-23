@@ -50,6 +50,21 @@ input[type=number]:focus,select:focus{outline:none;border-color:#2e74b5;backgrou
 /* ── Divider ── */
 hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 
+/* ── Helix supplementary ── */
+.helix-box{background:#f5fbff;border:2px solid #2e74b5;border-radius:9px;padding:18px 20px;margin-top:10px}
+.helix-tag{display:inline-flex;align-items:center;gap:7px;background:#1a3a5c;color:#fff;border-radius:6px;padding:4px 13px;font-size:12px;font-weight:700;margin-bottom:12px;letter-spacing:.3px}
+.helix-tag .helix-icon{font-size:15px}
+.helix-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.helix-kpi-cell{background:#fff;border:1.5px solid #bdd7ee;border-radius:7px;padding:9px 11px;text-align:center}
+.helix-kpi-cell.hl{background:#1a3a5c;border-color:#1a3a5c}
+.helix-kpi-lbl{font-size:10.5px;color:#5c7a94;font-weight:600}
+.helix-kpi-cell.hl .helix-kpi-lbl{color:#9ab5cc}
+.helix-kpi-val{font-size:18px;font-weight:700;color:#1a3a5c;margin-top:2px;line-height:1}
+.helix-kpi-cell.hl .helix-kpi-val{color:#fff}
+.helix-kpi-unit{font-size:10px;color:#7a8fa0;margin-top:1px}
+.helix-kpi-cell.hl .helix-kpi-unit{color:#9ab5cc}
+.helix-note{font-size:11px;color:#8fa5bb;line-height:1.65;margin-top:10px;font-style:italic}
+
 /* ── Buttons ── */
 .btn-primary{display:block;width:100%;height:44px;background:linear-gradient(135deg,#1a3a5c,#2e74b5);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.3px;transition:opacity .15s,transform .1s;font-family:Arial,sans-serif;margin-top:18px}
 .btn-primary:hover{opacity:.91}.btn-primary:active{transform:scale(.99)}
@@ -346,7 +361,33 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
       Ms section capacities are height-independent (no LTB for CHS) and unchanged at all heights.
       Verify on-site with StopDigging static pile test before installation.
     </div>
-  </div>
+
+    <!-- ══ HELIX SUPPLEMENTARY ANALYSIS ══ -->
+    <hr/>
+    <div class="sec">⬡ Helix Supplementary Analysis — Additional Lateral Resistance</div>
+    <p style="font-size:12px;color:#5c7a94;margin-bottom:10px;line-height:1.65">
+      The continuous helix welded to the groundscrew pipe provides additional lateral bearing area beyond the pipe OD, increasing passive resistance on both the active and passive faces.
+      <strong>Enter the helix dimensions from the StopDigging product specification for the section selected above.</strong>
+      This analysis does not alter the base design calculation — it quantifies the supplementary resistance the helix contributes and the resulting increase in effective factor of safety.
+    </p>
+    <p style="font-size:11.5px;color:#8fa5bb;margin-bottom:14px;line-height:1.6">
+      Fixed helix properties (all StopDigging groundscrews): plate thickness t = 4 mm · radial extension Δr = 8 mm each side (+16 mm on diameter) · pitch = 58 mm · continuous helical plate.
+      Resistance model: bearing-area method — effective additional projected width per unit pile length = 2·Δr·(t/pitch).
+      Capacity is estimated using the same Broms pu and equilibrium rotation point (zrd) from the base calculation, applied over the helix length within the embedment zone.
+    </p>
+    <div style="max-width:280px;margin-bottom:4px">
+      <div class="field">
+        <label>Helix Length <span class="sym">L<sub>h</sub></span><span class="unit">(mm)</span></label>
+        <input type="number" id="L_helix" placeholder="e.g. 800" min="1" max="10000" step="50"/>
+        <span class="hint">Total helixed length — from groundscrew product data sheet</span>
+      </div>
+    </div>
+    <div class="err-box" id="errHelix" style="display:none"></div>
+    <button class="btn-secondary" onclick="runHelix()" style="max-width:320px;margin-top:10px">⬡ &nbsp;Calculate Helix Resistance Bonus</button>
+
+    <div id="helixResult" style="display:none;margin-top:18px"></div>
+
+  </div><!-- /screw2 -->
 
 </div><!-- /tab2 -->
 
@@ -466,12 +507,27 @@ function runGeo() {
     const pu          = pu_flat*slopeFactor;
     const ns          = 1.5*D_ref;
 
-    const qa   = (pu/FOS)/2;
-    const qb   = -Pa;
-    const qc   = -Pa*(e+ns);
-    const disc = qb*qb-4*qa*qc;
-    const u    = (-qb+Math.sqrt(disc))/(2*qa);
-    const L_calc     = u+ns;
+    // Simultaneous force + moment equilibrium (Wood 2021 / Zhang 2018)
+    // Force:  Pa = (pu/FOS)·Le·(2·zrd − 1)
+    // Moment: zrd = −ed + √(ed² + ed + 0.5),  ed = (e + ns)/Le
+    const pu_r = pu / FOS;
+    function embedCapacity(Le) {
+      const ed  = (e + ns) / Le;
+      const zrd = -ed + Math.sqrt(ed * ed + ed + 0.5);
+      return pu_r * Le * Math.max(0, 2 * zrd - 1);
+    }
+    let lo = ns + 0.001, hi = 50.0;
+    for (let i = 0; i < 80; i++) {
+      const mid = (lo + hi) / 2;
+      if (embedCapacity(mid) < Pa) lo = mid; else hi = mid;
+      if (hi - lo < 0.00005) break;
+    }
+    const Le_calc = (lo + hi) / 2;
+    const L_calc  = Le_calc + ns;
+    const ed_f    = (e + ns) / Le_calc;
+    const zrd_f   = -ed_f + Math.sqrt(ed_f * ed_f + ed_f + 0.5);
+    const zr_f    = ns + zrd_f * Le_calc;
+    const u = Le_calc;
     const L_calc_r50 = Math.ceil(L_calc*1000/50)*50/1000;
     const L_adopt    = Math.max(L_calc_r50,H);
 
@@ -487,6 +543,7 @@ function runGeo() {
             beta_pct, alpha_pct, wallType, engRequired, engReasons,
             sigma_base, sigma_q, Pa_soil, Pa_q, Pa, e, M_ground,
             pu, pu_flat, slopeFactor, ns, D_ref,
+            Le_calc, zrd_f,
             L_calc, L_adopt, y0, M_max, L_total, testDisp, testDispLabel };
 
     document.getElementById('outEP').innerHTML =
@@ -563,9 +620,12 @@ function runGeo() {
        `α = ${alpha_pct}% (${fmt(Math.atan(alpha_pct/100)*180/Math.PI,1)}°), cos²α = ${fmt(slopeFactor,4)}  →  pu = ${fmt(pu_flat,2)} × ${fmt(slopeFactor,4)}`,
        fmt(pu,2)+' kN/m',null]]:[]),
       ['Near-surface zone',`1.5D = 1.5 × ${D_ref}`,fmt(ns*1000,1)+' mm',null],
-      ['Quadratic embedment (FOS='+FOS+')',
-       `Pa(e+L) = (pu/FOS)(L−1.5D)²/2\nSolve: u = ${fmt(u,4)} m, L = u+1.5D`,
+      ['Embedment — simultaneous equilibrium (FOS='+FOS+')',
+       `Force:  Pa = (pu/FOS)·Le·(2·zrd−1)\nMoment: zrd = −ed+√(ed²+ed+0.5), ed=(e+ns)/Le\nBisect → Le = ${fmt(Le_calc,4)} m, zrd = ${fmt(zrd_f,4)}`,
        fmt(L_calc*1000,0)+' mm',null],
+      ['Rotation depth below ground (zr)',
+       `zr = ns + zrd·Le = ${fmt(ns*1000,1)} + ${fmt(zrd_f,4)}×${fmt(Le_calc*1000,1)} mm`,
+       fmt(zr_f*1000,1)+' mm',null],
       ['Rounded embedment (nearest 50 mm)',
        `Round up: ${fmt(L_calc*1000,0)} mm → ${fmt(L_calc_r50*1000,0)} mm`,
        fmt(L_calc_r50*1000,0)+' mm',null],
@@ -682,6 +742,150 @@ function populateScrewTab() {
       <td style="text-align:center"><span class="tag ${r.pass?'ok':'ng'}">${r.pass?'PASS':'FAIL'}</span></td>
     </tr>`;
   }).join('');
+}
+
+// ─── HELIX SUPPLEMENTARY ANALYSIS ────────────────────────────────────────────
+function runHelix() {
+  setErr('errHelix', '');
+  document.getElementById('helixResult').style.display = 'none';
+
+  if (!GEO) { setErr('errHelix', 'Run the geotechnical calculation on Tab 1 first.'); return; }
+
+  const L_helix_mm = parseFloat(document.getElementById('L_helix').value);
+
+  if (isNaN(L_helix_mm) || L_helix_mm <= 0) {
+    setErr('errHelix', 'Enter a valid helix length > 0 mm.');
+    return;
+  }
+
+  const { Pa, pu, Cu, FOS, Le_calc, zrd_f, D_ref } = GEO;
+
+  const D_pipe_mm = D_ref * 1000;         // mm (89)
+  const L_helix   = L_helix_mm / 1000;    // m
+  const delta_r   = 0.008;                // m — fixed 8 mm each side
+  const t_helix   = 0.004;                // m — fixed 4 mm plate thickness
+  const pitch     = 0.058;                // m — fixed 58 mm pitch
+
+  // ── Geometry ──
+  const D_add      = 2 * delta_r * (t_helix / pitch); // m — effective additional bearing width per unit length
+  const helix_frac = (t_helix / pitch) * 100;          // % helix fill ratio
+
+  // ── Additional Broms resistance per unit length (unfactored) ──
+  const delta_pu  = 9 * Cu * D_add;                  // kN/m
+
+  // ── Helix length within effective embedment zone ──
+  const L_h_eff   = Math.min(L_helix, Le_calc);      // m
+
+  // ── Equilibrium factor (same rotation point from base calc) ──
+  const eq_fac    = Math.max(0, 2 * zrd_f - 1);
+
+  // ── Resistance contributions ──
+  const R_base    = pu * Le_calc * eq_fac;            // kN — unfactored base passive capacity  (≈ Pa × FOS)
+  const delta_R   = delta_pu * L_h_eff * eq_fac;     // kN — unfactored helix resistance bonus
+  const R_total   = R_base + delta_R;                 // kN — total unfactored capacity with helix
+
+  // ── Effective FOS ──
+  const FOS_base  = R_base / Pa;
+  const FOS_eff   = R_total / Pa;
+  const inc_pct   = (delta_R / R_base) * 100;
+
+  // ── Render ──
+  const f2h = v => (+v).toFixed(2);
+  const f3h = v => (+v).toFixed(3);
+  const f4h = v => (+v).toFixed(4);
+
+  document.getElementById('helixResult').innerHTML = `
+    <div class="helix-box">
+      <div class="helix-tag"><span class="helix-icon">⬡</span> Helix Resistance Summary</div>
+
+      <div class="helix-kpi">
+        <div class="helix-kpi-cell">
+          <div class="helix-kpi-lbl">Δpu (helix bonus per unit length)</div>
+          <div class="helix-kpi-val">${f3h(delta_pu)}</div>
+          <div class="helix-kpi-unit">kN/m</div>
+        </div>
+        <div class="helix-kpi-cell">
+          <div class="helix-kpi-lbl">Helix length in embed zone</div>
+          <div class="helix-kpi-val">${f2h(L_h_eff*1000)}</div>
+          <div class="helix-kpi-unit">mm (of ${f2h(L_helix_mm)} mm input)</div>
+        </div>
+        <div class="helix-kpi-cell">
+          <div class="helix-kpi-lbl">Base passive capacity</div>
+          <div class="helix-kpi-val">${f2h(R_base)}</div>
+          <div class="helix-kpi-unit">kN (= Pa × ${f2h(FOS_base)})</div>
+        </div>
+        <div class="helix-kpi-cell">
+          <div class="helix-kpi-lbl">Helix resistance bonus ΔR</div>
+          <div class="helix-kpi-val">+${f3h(delta_R)}</div>
+          <div class="helix-kpi-unit">kN (+${f2h(inc_pct)}%)</div>
+        </div>
+        <div class="helix-kpi-cell">
+          <div class="helix-kpi-lbl">Total capacity (unfactored)</div>
+          <div class="helix-kpi-val">${f2h(R_total)}</div>
+          <div class="helix-kpi-unit">kN</div>
+        </div>
+        <div class="helix-kpi-cell hl">
+          <div class="helix-kpi-lbl">Effective FOS with helix</div>
+          <div class="helix-kpi-val">${f2h(FOS_eff)}</div>
+          <div class="helix-kpi-unit">vs base FOS = ${f2h(FOS_base)}</div>
+        </div>
+      </div>
+
+      <table class="steps">
+        <thead><tr>
+          <th>Step</th><th>Calculation</th><th>Result</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="lbl">Helix radial extension (fixed)</td>
+              <td class="fml">Δr = 8 mm each side (fixed geometry — +16 mm on pipe OD)</td>
+              <td class="res">8 mm</td></tr>
+          <tr style="background:#f7fafc"><td class="lbl">Plate thickness (fixed)</td>
+              <td class="fml">t = 4 mm (plate thickness)</td>
+              <td class="res">4 mm</td></tr>
+          <tr><td class="lbl">Pitch (fixed)</td>
+              <td class="fml">pitch = 58 mm (centre-to-centre of turns)</td>
+              <td class="res">58 mm</td></tr>
+          <tr style="background:#f7fafc"><td class="lbl">Helix fill ratio (t/pitch)</td>
+              <td class="fml">t/pitch = 4/58 = ${f4h(t_helix/pitch)} (${f2h(helix_frac)}% solid)</td>
+              <td class="res">${f4h(t_helix/pitch)}</td></tr>
+          <tr><td class="lbl">Effective additional bearing width (D_add)</td>
+              <td class="fml">D_add = 2·Δr·(t/pitch) = 2×8×${f4h(t_helix/pitch)} mm</td>
+              <td class="res">${f4h(D_add*1000)} mm</td></tr>
+          <tr style="background:#f7fafc"><td class="lbl">Additional Broms resistance (Δpu)</td>
+              <td class="fml">Δpu = 9·Cu·D_add = 9×${Cu}×${f4h(D_add)} m</td>
+              <td class="res">${f3h(delta_pu)} kN/m</td></tr>
+          <tr><td class="lbl">Helix length in embedment zone</td>
+              <td class="fml">L_h_eff = min(L_h, Le) = min(${f2h(L_helix_mm)}, ${f2h(Le_calc*1000)}) mm</td>
+              <td class="res">${f2h(L_h_eff*1000)} mm</td></tr>
+          <tr style="background:#f7fafc"><td class="lbl">Equilibrium factor (2·zrd − 1)</td>
+              <td class="fml">eq_fac = 2×${f4h(zrd_f)} − 1  (rotation point from base calc)</td>
+              <td class="res">${f4h(eq_fac)}</td></tr>
+          <tr><td class="lbl">Helix resistance bonus (ΔR, unfactored)</td>
+              <td class="fml">ΔR = Δpu·L_h_eff·eq_fac = ${f3h(delta_pu)}×${f4h(L_h_eff)}×${f4h(eq_fac)}</td>
+              <td class="res">+${f3h(delta_R)} kN</td></tr>
+          <tr style="background:#f7fafc"><td class="lbl">Base passive capacity (unfactored)</td>
+              <td class="fml">R_base = pu·Le·eq_fac = ${f2h(pu)}×${f4h(Le_calc)}×${f4h(eq_fac)}</td>
+              <td class="res">${f2h(R_base)} kN</td></tr>
+          <tr><td class="lbl">Total capacity with helix (unfactored)</td>
+              <td class="fml">R_total = ${f2h(R_base)} + ${f3h(delta_R)}</td>
+              <td class="res">${f2h(R_total)} kN</td></tr>
+          <tr style="background:#f7fafc;font-weight:700"><td class="lbl">Effective FOS with helix</td>
+              <td class="fml">FOS_eff = R_total / Pa = ${f2h(R_total)} / ${f2h(Pa)}</td>
+              <td class="res">${f2h(FOS_eff)}</td></tr>
+        </tbody>
+      </table>
+
+      <p class="helix-note">
+        ⚠ This analysis is supplementary and indicative only. The bearing-area model applies the Broms passive unit resistance
+        to the projected helix wing area per unit length (D_add = 2·Δr·t/pitch, where Δr = 8 mm and t = 4 mm are fixed constants).
+        No published guidance exists for helix lateral resistance in this configuration — the result should be treated as an
+        upper-bound estimate of additional capacity and must not be used to reduce the base embedment depth.
+        The base calculation (Tab 1) remains the governing design.
+      </p>
+    </div>`;
+
+  document.getElementById('helixResult').style.display = 'block';
+  document.getElementById('helixResult').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 </script>
 </body>
