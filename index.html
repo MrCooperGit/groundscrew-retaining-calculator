@@ -536,6 +536,12 @@ function runGeo() {
     const M_max = Pa*(e+y0)-pu*lever*lever/2;
     const L_total = H+L_adopt;
 
+    // ── Select nearest available groundscrew product length ──────────────────
+    const SCREW_LENGTHS = [1200, 1600, 2000, 2500, 3000, 3500]; // mm
+    const L_total_mm    = Math.round(L_total * 1000);
+    const L_product     = SCREW_LENGTHS.find(l => l >= L_total_mm) ?? null;
+    // null means required length exceeds longest available product
+
     const testDisp      = wallType==='atrest' ? +(H_mm/500).toFixed(1) : 25;
     const testDispLabel = wallType==='atrest' ? 'mm (= H/500)' : 'mm';
 
@@ -544,7 +550,8 @@ function runGeo() {
             sigma_base, sigma_q, Pa_soil, Pa_q, Pa, e, M_ground,
             pu, pu_flat, slopeFactor, ns, D_ref,
             Le_calc, zrd_f,
-            L_calc, L_adopt, y0, M_max, L_total, testDisp, testDispLabel };
+            L_calc, L_adopt, y0, M_max, L_total, L_total_mm, L_product,
+            testDisp, testDispLabel };
 
     document.getElementById('outEP').innerHTML =
       outCell(Kname,fmt(K,4),'—') +
@@ -559,7 +566,10 @@ function runGeo() {
       outCell('Broms pu',fmt(pu,2),'kN/m') +
       outCell('Calc. Embedment',fmt(L_calc*1000,0),'mm') +
       outCell('Adopted Embedment',fmt(L_adopt*1000,0),'mm',true) +
-      outCell('Total Pile Length',fmt(L_total*1000,0),'mm',true);
+      outCell('Required Total Length',fmt(L_total*1000,0),'mm') +
+      (L_product
+        ? outCell('Selected Screw Length',L_product,'mm',true)
+        : `<div class="out-cell hi" style="background:#7f1d1d;border-color:#991b1b"><div class="out-label">Selected Screw Length</div><div class="out-val" style="font-size:13px">EXCEEDS 3500</div><div class="out-unit">mm — contact StopDigging</div></div>`);
 
     document.getElementById('outMom').innerHTML =
       outCell('M at Ground Level',fmt(M_ground,3),'kNm') +
@@ -638,6 +648,12 @@ function runGeo() {
       ['Maximum BM in pile (M*)',
        `M* = Pa(e+y₀) − pu(y₀−1.5D)²/2\n   = ${fmt(Pa,2)}×${fmt(e+y0,4)} − ${fmt(pu,2)}×${fmt(lever,4)}²/2`,
        fmt(M_max,3)+' kNm',null],
+      ['Required total pile length',
+       `L_total = H + L_adopt = ${fmt(H*1000,0)} + ${fmt(L_adopt*1000,0)} mm`,
+       fmt(L_total*1000,0)+' mm',null],
+      ['StopDigging product length selected',
+       `Nearest available ≥ ${fmt(L_total*1000,0)} mm from [1200, 1600, 2000, 2500, 3000, 3500] mm`,
+       L_product ? L_product+' mm' : 'EXCEEDS 3500 mm — contact StopDigging', null],
     ];
 
     document.getElementById('geoSteps').innerHTML = rows.map(r=>stepRow(...r)).join('');
@@ -658,7 +674,7 @@ function populateScrewTab() {
   document.getElementById('warn2').style.display = 'none';
   document.getElementById('screw2').style.display = 'block';
 
-  const { Pa, M_max, H_mm, engRequired, engReasons } = GEO;
+  const { Pa, M_max, H_mm, engRequired, engReasons, L_total_mm, L_product } = GEO;
   const bracket = H_mm<=600?600:H_mm<=1200?1200:H_mm<=1600?1600:2000;
   const bracketExtrap = bracket===1600||bracket===2000;
 
@@ -673,6 +689,13 @@ function populateScrewTab() {
       ${engRequired
         ? '<span style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:5px;padding:3px 10px;font-size:12px;color:#78350f;font-weight:700">⚠ Engineering Required: '+engReasons.join(' · ')+'</span>'
         : '<span style="background:#d1fae5;border:1.5px solid #059669;border-radius:5px;padding:3px 10px;font-size:12px;color:#065f46;font-weight:700">✓ Prescriptive design — no engineering triggers</span>'}
+    </div>
+    <div class="load-item" style="grid-column:1/-1;margin-top:8px;padding:10px 14px;border-radius:7px;${L_product?'background:#ebf3fb;border:2px solid #2e74b5':'background:#fee2e2;border:2px solid #dc2626'}">
+      <span style="font-size:12px;font-weight:600;color:#344a5e">Required pile length: ${L_total_mm} mm &nbsp;→&nbsp; </span>
+      ${L_product
+        ? `<span style="font-size:15px;font-weight:700;color:#1a3a5c">Selected StopDigging length: ${L_product} mm</span>
+           <span style="font-size:11px;color:#5c7a94;margin-left:8px">Available: 1200 · 1600 · 2000 · 2500 · 3000 · 3500 mm</span>`
+        : `<span style="font-size:14px;font-weight:700;color:#991b1b">⚠ Exceeds 3500 mm max — contact StopDigging</span>`}
     </div>`;
 
   const results = SECTIONS.map(sec => {
