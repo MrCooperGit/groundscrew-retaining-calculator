@@ -137,6 +137,21 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 /* ── Warnings ── */
 .warn-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:14px;display:none}
 .err-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:10px 14px;font-size:12px;color:#991b1b;margin-top:12px;display:none}
+
+/* ── Slope tab layer rows ── */
+.sl-row{display:grid;grid-template-columns:72px 72px minmax(110px,1fr) 68px 115px 64px 64px 70px 34px;gap:5px;align-items:end;padding:10px 11px;background:#f7fafc;border:1px solid #dde7f0;border-radius:7px;margin-bottom:6px}
+.sl-row input,.sl-row select{height:36px;border:1.5px solid #c0cdd9;border-radius:5px;padding:0 8px;font-size:12.5px;font-family:Arial,sans-serif;color:#1a2632;background:#fafcff;width:100%}
+.sl-row .sl-type-sel{height:36px;border:1.5px solid #c0cdd9;border-radius:5px;padding:0 5px;font-size:11.5px;font-family:Arial,sans-serif;background:#fafcff;width:100%}
+.sl-row label{font-size:10.5px;font-weight:700;color:#344a5e;display:block;margin-bottom:3px;white-space:nowrap}
+.sl-del-btn{height:32px;width:32px;border:1.5px solid #dc2626;background:#fff;border-radius:5px;color:#dc2626;font-weight:700;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;margin-bottom:3px}
+.sl-hdr-row{display:grid;grid-template-columns:72px 72px minmax(110px,1fr) 68px 115px 64px 64px 70px 34px;gap:5px;padding:0 11px 4px;margin-bottom:2px}
+.sl-hdr-row span{font-size:10px;font-weight:700;color:#2e74b5;text-align:center}
+.sl-pres-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.sl-pres-tbl th{background:#2a4a6a;color:#fff;padding:7px 10px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.sl-pres-tbl td{padding:7px 10px;border-bottom:1px solid #e8edf3;vertical-align:middle}
+.sl-pres-tbl tr:nth-child(even) td{background:#f7fafc}
+.sl-pres-tbl td.num{text-align:right;font-family:'Courier New',monospace;font-weight:600;color:#1a3a5c}
+@media(max-width:780px){.sl-row,.sl-hdr-row{grid-template-columns:1fr 1fr;} .sl-row>:nth-child(3){grid-column:1/-1}}
 .eng-req{background:#fef3c7;border:2px solid #f59e0b;border-radius:8px;padding:13px 16px;font-size:12.5px;color:#78350f;margin-top:14px;display:none;line-height:1.6}
 .eng-req strong{font-size:13.5px;display:block;margin-bottom:5px}
 .eng-ok{background:#d1fae5;border:2px solid #059669;border-radius:8px;padding:13px 16px;font-size:12.5px;color:#065f46;margin-top:14px;display:none}
@@ -171,6 +186,9 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
   </button>
   <button class="tab-btn" onclick="switchTab(2)" id="tabBtn2">
     <span class="tab-num">2</span>Groundscrew Selection
+  </button>
+  <button class="tab-btn" onclick="switchTab(3)" id="tabBtn3">
+    <span class="tab-num">3</span>Slope Instability Loads
   </button>
 </div>
 
@@ -391,6 +409,84 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 
 </div><!-- /tab2 -->
 
+<!-- TAB 3 — Slope Instability Loads -->
+<div class="tab-panel" id="tab3">
+
+  <p style="font-size:11.5px;color:#8fa5bb;margin-bottom:18px;line-height:1.65">
+    Calculates the maximum lateral soil pressure applied to a groundscrew pile from a moving/unstable slope.
+    Define soil layers below ground. The calculator integrates the limiting passive resistance over the embedded depth
+    to give the total lateral force and moment demand on the pile.<br>
+    <strong style="color:#4b6a8a">For drained layers</strong> enter γ, φ' and c'. &nbsp;
+    <strong style="color:#4b6a8a">For undrained layers</strong> enter γ and Cu. &nbsp;
+    <strong style="color:#4b6a8a">Topsoil / no data</strong> — only γ is used (at-rest pressure, K₀ = 0.5).
+  </p>
+
+  <div class="sec">Pile &amp; Site Properties</div>
+  <div class="g3">
+    <div class="field">
+      <label>Pile Diameter <span class="sym">D</span><span class="unit">(mm)</span></label>
+      <input type="number" id="sl_D" value="89" min="50" max="500" step="1"/>
+      <span class="hint">CHS outer diameter (89 mm default)</span>
+    </div>
+    <div class="field">
+      <label>Embedment Depth <span class="sym">L<sub>e</sub></span><span class="unit">(m)</span></label>
+      <input type="number" id="sl_Le" placeholder="e.g. 1.5" min="0.1" max="15" step="0.05"/>
+      <span class="hint">Total embedded length below ground surface</span>
+    </div>
+    <div class="field">
+      <label>Slope Angle <span class="sym">β</span><span class="unit">(°)</span></label>
+      <input type="number" id="sl_beta" placeholder="e.g. 20" min="0" max="60" step="1"/>
+      <span class="hint">For reference only — used in output description</span>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:20px">Soil Profile — Layers</div>
+
+  <div class="sl-hdr-row">
+    <span>From (m)</span><span>To (m)</span><span style="text-align:left">Description</span>
+    <span>γ kN/m³</span><span>Analysis type</span><span>φ' (°)</span><span>c' (kPa)</span><span>Cu (kPa)</span><span></span>
+  </div>
+  <div id="sl_layers"></div>
+
+  <button class="btn-secondary" onclick="addSlopeLayer()" style="max-width:180px;height:36px;margin-top:4px;font-size:12.5px;margin-bottom:4px">+ Add Layer</button>
+
+  <button class="btn-primary" onclick="runSlope()">▶ &nbsp;Calculate Slope Instability Loads</button>
+  <div class="err-box" id="errSlope" style="display:none"></div>
+
+  <div id="slopeResults" style="display:none;margin-top:22px">
+
+    <div class="sec">Results — Lateral Pressure Profile</div>
+    <table class="sl-pres-tbl" id="sl_pressTable">
+      <thead><tr>
+        <th>Layer</th><th>Depth (m)</th><th>Analysis</th>
+        <th>σ'v mid (kPa)</th><th>p_u mid (kN/m)</th>
+        <th>Thickness (m)</th><th>Force F (kN)</th><th>z centroid (m)</th><th>Moment (kNm)</th>
+      </tr></thead>
+      <tbody id="sl_pressBody"></tbody>
+    </table>
+
+    <div class="sec" style="margin-top:20px">Summary Outputs</div>
+    <div class="out-grid" id="sl_outGrid" style="grid-template-columns:repeat(4,1fr)"></div>
+
+    <div class="sec" style="margin-top:20px">Calculation Steps</div>
+    <table class="steps">
+      <thead><tr><th>Step</th><th>Expression</th><th>Result</th><th></th></tr></thead>
+      <tbody id="sl_steps"></tbody>
+    </table>
+
+    <div id="sl_tabCheck" style="margin-top:14px;padding:12px 16px;border-radius:7px;font-size:13px;font-weight:600;display:none"></div>
+
+    <p style="font-size:11px;color:#8fa5bb;margin-top:14px;line-height:1.6;font-style:italic">
+      Note: Lateral pressure = passive resistance of soil per unit depth × pile diameter (upper-bound, fully mobilised slope).
+      Undrained layers use N<sub>p</sub> = min(9, 2 + 4z/D) (Broms, depth-varying).
+      Drained layers use K<sub>p</sub> × σ'<sub>v</sub> + 2c'√K<sub>p</sub> (Rankine passive).
+      Topsoil uses K₀ = 0.5 × σ'<sub>v</sub>.
+      Forces integrate over embedded depth only.
+    </p>
+  </div>
+
+</div><!-- /tab3 -->
+
 </div><!-- /card -->
 </div><!-- /page -->
 
@@ -405,7 +501,7 @@ const PHI = 0.9;
 let GEO = null;
 
 function switchTab(n) {
-  [1,2].forEach(i => {
+  [1,2,3].forEach(i => {
     document.getElementById('tab'+i).classList.toggle('active', i===n);
     document.getElementById('tabBtn'+i).classList.toggle('active', i===n);
   });
@@ -909,6 +1005,195 @@ function runHelix() {
 
   document.getElementById('helixResult').style.display = 'block';
   document.getElementById('helixResult').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ─── SLOPE INSTABILITY LOADS (TAB 3) ─────────────────────────────────────────
+let _slN = 0;
+
+function addSlopeLayer(top='', bot='', desc='', gam=18, type='undrained', phi=25, c=0, cu=25) {
+  _slN++;
+  const n = _slN;
+  const div = document.createElement('div');
+  div.className = 'sl-row';
+  div.id = 'slLayer_' + n;
+  div.innerHTML = `
+    <div><label>From (m)</label><input type="number" id="sl_top_${n}" value="${top}" min="0" step="0.05"/></div>
+    <div><label>To (m)</label><input type="number" id="sl_bot_${n}" value="${bot}" min="0" step="0.05"/></div>
+    <div><label>Description</label><input type="text" id="sl_desc_${n}" value="${desc}" placeholder="e.g. Firm clay" style="height:36px;border:1.5px solid #c0cdd9;border-radius:5px;padding:0 8px;font-size:12.5px;width:100%"/></div>
+    <div><label>γ (kN/m³)</label><input type="number" id="sl_gam_${n}" value="${gam}" min="1" max="30" step="0.5"/></div>
+    <div><label>Analysis</label><select id="sl_type_${n}" class="sl-type-sel">
+      <option value="undrained"${type==='undrained'?' selected':''}>Undrained</option>
+      <option value="drained"${type==='drained'?' selected':''}>Drained (c′-φ′)</option>
+      <option value="topsoil"${type==='topsoil'?' selected':''}>Topsoil / no data</option>
+    </select></div>
+    <div><label>φ′ (°)</label><input type="number" id="sl_phi_${n}" value="${phi}" min="0" max="45" step="1"/></div>
+    <div><label>c′ (kPa)</label><input type="number" id="sl_c_${n}" value="${c}" min="0" step="1"/></div>
+    <div><label>Cu (kPa)</label><input type="number" id="sl_cu_${n}" value="${cu}" min="0" step="1"/></div>
+    <div style="display:flex;align-items:flex-end"><button class="sl-del-btn" onclick="removeSlopeLayer(${n})">✕</button></div>`;
+  document.getElementById('sl_layers').appendChild(div);
+}
+
+function removeSlopeLayer(n) {
+  const el = document.getElementById('slLayer_' + n);
+  if (el) el.remove();
+}
+
+// Initialise default layers on first load
+(function initSlopeLayers() {
+  addSlopeLayer(0, 0.3, 'Topsoil', 16, 'topsoil', 0, 0, 0);
+  addSlopeLayer(0.3, 1.5, 'Upper soil (e.g. residual clay)', 18, 'undrained', 0, 0, 25);
+  addSlopeLayer(1.5, 4.0, 'Lower soil (e.g. stiff clay)', 19, 'undrained', 0, 0, 50);
+})();
+
+function runSlope() {
+  setErr('errSlope', '');
+  document.getElementById('slopeResults').style.display = 'none';
+
+  const D_mm = parseFloat(document.getElementById('sl_D').value);
+  const Le   = parseFloat(document.getElementById('sl_Le').value);
+  const beta = parseFloat(document.getElementById('sl_beta').value) || 0;
+  const D    = D_mm / 1000; // m
+
+  if (isNaN(D_mm) || D_mm <= 0) { setErr('errSlope','Enter a valid pile diameter.'); return; }
+  if (isNaN(Le) || Le <= 0)     { setErr('errSlope','Enter a valid embedment depth.'); return; }
+
+  // Collect and validate layers
+  const layerDivs = Array.from(document.querySelectorAll('#sl_layers .sl-row'));
+  if (layerDivs.length === 0) { setErr('errSlope','Add at least one soil layer.'); return; }
+
+  const layers = [];
+  for (const div of layerDivs) {
+    const n    = div.id.replace('slLayer_', '');
+    const top  = parseFloat(document.getElementById('sl_top_' + n).value);
+    const bot  = parseFloat(document.getElementById('sl_bot_' + n).value);
+    const desc = document.getElementById('sl_desc_' + n).value || ('Layer ' + n);
+    const gam  = parseFloat(document.getElementById('sl_gam_' + n).value) || 18;
+    const type = document.getElementById('sl_type_' + n).value;
+    const phi  = parseFloat(document.getElementById('sl_phi_' + n).value) || 0;
+    const c    = parseFloat(document.getElementById('sl_c_'   + n).value) || 0;
+    const cu   = parseFloat(document.getElementById('sl_cu_'  + n).value) || 0;
+    if (isNaN(top) || isNaN(bot) || bot <= top) { setErr('errSlope', `Layer "${desc}": "To" depth must be greater than "From" depth.`); return; }
+    layers.push({ top, bot, desc, gam, type, phi, c, cu });
+  }
+  layers.sort((a, b) => a.top - b.top);
+
+  // Helper: effective vertical stress at depth z considering all layers
+  function svAt(z) {
+    let sv = 0;
+    for (const lyr of layers) {
+      const zt = Math.max(lyr.top, 0);
+      const zb = Math.min(lyr.bot, z);
+      if (zb > zt) sv += lyr.gam * (zb - zt);
+    }
+    return sv;
+  }
+
+  // Helper: lateral pressure per unit depth (kN/m) at depth z within a given layer
+  function pAtZ(z, layer) {
+    const sv = svAt(z);
+    if (layer.type === 'undrained') {
+      const Np = Math.min(9, 2 + 4 * z / D);
+      return Np * layer.cu * D;
+    } else if (layer.type === 'drained') {
+      const Kp = Math.tan((45 + layer.phi / 2) * Math.PI / 180) ** 2;
+      return Math.max(0, (Kp * sv + 2 * layer.c * Math.sqrt(Kp)) * D);
+    } else { // topsoil
+      return 0.5 * sv * D;
+    }
+  }
+
+  let P_total = 0; // kN
+  let M_gnd   = 0; // kNm about ground level (z downward)
+  const tableRows = [];
+
+  for (const layer of layers) {
+    const z0 = Math.max(layer.top, 0);
+    const z1 = Math.min(layer.bot, Le);
+    if (z1 <= z0) continue; // layer outside embedment
+
+    const dz      = z1 - z0;
+    const z_mid   = (z0 + z1) / 2;
+    const sv_mid  = svAt(z_mid);
+    const p_top   = pAtZ(z0, layer);
+    const p_bot   = pAtZ(z1, layer);
+    const p_mid   = pAtZ(z_mid, layer);
+    // Trapezoidal integration
+    const F_layer = (p_top + p_bot) / 2 * dz;
+    const M_layer = F_layer * z_mid;
+
+    P_total += F_layer;
+    M_gnd   += M_layer;
+
+    let typeLabel = '';
+    if (layer.type === 'undrained') {
+      const Np = Math.min(9, 2 + 4 * z_mid / D);
+      typeLabel = `Undrained (Np=${Np.toFixed(1)}, Cu=${layer.cu} kPa)`;
+    } else if (layer.type === 'drained') {
+      const Kp = Math.tan((45 + layer.phi / 2) * Math.PI / 180) ** 2;
+      typeLabel = `Drained (Kp=${Kp.toFixed(3)}, φ'=${layer.phi}°, c'=${layer.c} kPa)`;
+    } else {
+      typeLabel = `Topsoil (K₀=0.5)`;
+    }
+
+    tableRows.push({ desc: layer.desc, z0, z1, typeLabel, sv_mid, p_mid, dz, F: F_layer, z_mid, M: M_layer });
+  }
+
+  const e_below = P_total > 0 ? M_gnd / P_total : 0; // depth of resultant below ground
+
+  // Pressure table
+  document.getElementById('sl_pressBody').innerHTML = tableRows.map((r, i) =>
+    `<tr${i%2?'':' style="background:#f7fafc"'}>
+      <td>${r.desc}</td>
+      <td>${r.z0.toFixed(2)} – ${r.z1.toFixed(2)}</td>
+      <td style="font-size:11px">${r.typeLabel}</td>
+      <td class="num">${r.sv_mid.toFixed(1)}</td>
+      <td class="num">${r.p_mid.toFixed(3)}</td>
+      <td class="num">${r.dz.toFixed(2)}</td>
+      <td class="num">${r.F.toFixed(3)}</td>
+      <td class="num">${r.z_mid.toFixed(2)}</td>
+      <td class="num">${r.M.toFixed(3)}</td>
+    </tr>`).join('');
+
+  // Summary output cells
+  document.getElementById('sl_outGrid').innerHTML =
+    outCell('Total Lateral Force P', fmt(P_total,3), 'kN', true) +
+    outCell('Moment at Ground M', fmt(M_gnd,3), 'kNm', true) +
+    outCell('Resultant depth below gnd', fmt(e_below,3), 'm') +
+    outCell('Embedment checked to', fmt(Le,2), 'm');
+
+  // Calculation steps
+  const slSteps = [
+    ['Pile diameter', `D = ${D_mm} mm`, `${(D*1000).toFixed(0)} mm`, null],
+    ['Embedment depth analysed', `Le = ${Le} m (full embedment = active zone)`, `${Le} m`, null],
+    ...tableRows.map(r => [
+      `Layer "${r.desc}" (${r.z0.toFixed(2)}–${r.z1.toFixed(2)} m)`,
+      `p_mid = ${r.p_mid.toFixed(3)} kN/m; F = (p_top+p_bot)/2 × ${r.dz.toFixed(2)} m`,
+      `${r.F.toFixed(3)} kN`, null
+    ]),
+    ['Total lateral force per pile', `P = Σ F_layer`, `${fmt(P_total,3)} kN`, null],
+    ['Moment about ground level', `M = Σ (F_layer × z_centroid)`, `${fmt(M_gnd,3)} kNm`, null],
+    ['Effective depth of resultant', `e_below = M / P = ${fmt(M_gnd,3)} / ${fmt(P_total,3)}`, `${fmt(e_below,3)} m below ground`, null],
+  ];
+  document.getElementById('sl_steps').innerHTML = slSteps.map(r => stepRow(...r)).join('');
+
+  // Cross-check against Tab 1 pile section if available
+  const tabCheck = document.getElementById('sl_tabCheck');
+  if (GEO && GEO.M_max !== undefined) {
+    const M_pile_head = P_total * e_below; // moment at ground from below-ground resultant
+    const ratio = M_pile_head / GEO.M_max;
+    const ok = M_pile_head <= GEO.M_max;
+    tabCheck.style.display = 'block';
+    tabCheck.style.background = ok ? '#d1fae5' : '#fee2e2';
+    tabCheck.style.border = ok ? '2px solid #059669' : '2px solid #dc2626';
+    tabCheck.style.color = ok ? '#065f46' : '#991b1b';
+    tabCheck.innerHTML = `${ok ? '✓' : '⚠'} &nbsp;Cross-check vs Tab 1 retaining wall: Slope M = ${fmt(M_pile_head,3)} kNm vs Wall M* = ${fmt(GEO.M_max,3)} kNm (ratio ${(ratio*100).toFixed(0)}%).
+    ${ok ? 'Slope instability moment is within the retaining wall pile design.' : 'Slope instability moment EXCEEDS the retaining wall pile design — review pile section.'}`;
+  } else {
+    tabCheck.style.display = 'none';
+  }
+
+  document.getElementById('slopeResults').style.display = 'block';
+  document.getElementById('slopeResults').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 </script>
 </body>
