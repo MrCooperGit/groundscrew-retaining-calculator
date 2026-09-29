@@ -190,6 +190,9 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
   <button class="tab-btn" onclick="switchTab(3)" id="tabBtn3">
     <span class="tab-num">3</span>Slope Instability Loads
   </button>
+  <button class="tab-btn" onclick="switchTab(4)" id="tabBtn4">
+    <span class="tab-num">4</span>Lateral Soil Pressure
+  </button>
 </div>
 
 <div class="card">
@@ -519,6 +522,86 @@ hr{border:none;border-top:1px solid #e4ecf4;margin:20px 0}
 
 </div><!-- /tab3 -->
 
+<!-- TAB 4 -->
+<div class="tab-panel" id="tab4">
+
+  <div style="background:#f0f6fc;border-left:4px solid #2e74b5;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1a2632;line-height:1.7">
+    <strong>What this tab does:</strong> Gives you the total lateral load each groundscrew pile needs to resist — combining the structural lateral load (from earthquake or wind, whichever governs) with the additional lateral push from at-rest soil pressure specified in your geotech report. You don't need to size the pile here; this number goes straight to StopDigging for pile selection and site testing.
+  </div>
+
+  <div class="sec">Step 1 — Structural Lateral Load (EQ or Wind)</div>
+  <div style="font-size:12.5px;color:#4b6a8a;background:#f7faff;border:1px solid #d0e4f5;border-radius:7px;padding:11px 14px;margin-bottom:14px;line-height:1.65">
+    Enter the lateral load per pile from your structural analysis for both earthquake and wind. The calculator will automatically use whichever is higher.
+  </div>
+  <div class="g2" style="max-width:560px;margin-bottom:6px">
+    <div class="field">
+      <label>Earthquake Lateral Load <span class="unit">(kN per pile)</span></label>
+      <input type="number" id="lp_eq" value="0" min="0" max="9999" step="0.1"/>
+      <span class="hint">Total horizontal EQ force shared across this pile (from structural engineer or NZS 1170.5)</span>
+    </div>
+    <div class="field">
+      <label>Wind Lateral Load <span class="unit">(kN per pile)</span></label>
+      <input type="number" id="lp_wind" value="0" min="0" max="9999" step="0.1"/>
+      <span class="hint">Total horizontal wind force shared across this pile (from structural engineer or NZS 1170.2)</span>
+    </div>
+  </div>
+
+  <div class="sec" style="margin-top:24px">Step 2 — At-Rest Soil Pressure</div>
+  <div style="font-size:12.5px;color:#4b6a8a;background:#f7faff;border:1px solid #d0e4f5;border-radius:7px;padding:11px 14px;margin-bottom:14px;line-height:1.65">
+    If your geotech report specifies at-rest lateral earth pressure on the pile, enter those values here. The soil pushes sideways on the pile over the upper zone — typically calculated over 3× the pile diameter width. Leave the zone depth at 0 if your report does not require this check.
+  </div>
+  <div class="g3" style="max-width:700px;margin-bottom:6px">
+    <div class="field">
+      <label>Pile Diameter <span class="sym">D</span><span class="unit">(mm)</span></label>
+      <input type="number" id="lp_D" value="89" min="50" max="500" step="1"/>
+      <span class="hint">Outer diameter of the groundscrew (e.g. 89 for CHS 89×4)</span>
+    </div>
+    <div class="field">
+      <label>Zone Depth <span class="sym">d₁</span><span class="unit">(m)</span></label>
+      <input type="number" id="lp_d1" value="1.0" min="0" max="10" step="0.1"/>
+      <span class="hint">Depth from ground surface over which at-rest pressure applies (e.g. 1.0 m). Enter 0 to skip.</span>
+    </div>
+    <div class="field">
+      <label>Width Multiplier <span class="sym">n</span></label>
+      <input type="number" id="lp_n" value="3" min="1" max="10" step="0.5"/>
+      <span class="hint">Effective soil width = n × pile diameter (your report may say "3 times pile diameter")</span>
+    </div>
+    <div class="field">
+      <label>K₀ — Earth Pressure Coefficient</label>
+      <input type="number" id="lp_k0" value="0.5" min="0.1" max="2" step="0.05"/>
+      <span class="hint">From geotech report — typically 0.5 for most soils</span>
+    </div>
+    <div class="field">
+      <label>Soil Unit Weight <span class="sym">γ</span><span class="unit">(kN/m³)</span></label>
+      <input type="number" id="lp_gamma" value="18" min="10" max="25" step="0.5"/>
+      <span class="hint">From geotech report — typically 18 kN/m³</span>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="runLateralPressure()" style="max-width:400px">▶ Calculate Total Lateral Load per Pile</button>
+  <div class="err-box" id="lp_err"></div>
+
+  <div id="lp_results" style="display:none;margin-top:22px">
+
+    <div class="sec">Total Lateral Load per Pile</div>
+    <div class="out-grid" id="lp_outGrid" style="grid-template-columns:repeat(4,1fr)"></div>
+
+    <div id="lp_govNote" style="font-size:12.5px;background:#f0f6fc;border:1px solid #bdd7ee;border-radius:7px;padding:12px 16px;margin-top:14px;line-height:1.7"></div>
+
+    <div class="sec" style="margin-top:20px">Calculation Steps</div>
+    <table class="steps">
+      <thead><tr><th>Step</th><th>Expression</th><th>Result</th><th></th></tr></thead>
+      <tbody id="lp_steps"></tbody>
+    </table>
+
+    <p style="font-size:11px;color:#8fa5bb;margin-top:14px;line-height:1.6;font-style:italic">
+      At-rest soil pressure: p(z) = K₀ × γ × z × (n×D), triangular distribution 0 → d₁.
+      Force = ½ × K₀ × γ × d₁² × n × D. Total = max(EQ, Wind) + At-rest force.
+    </p>
+  </div>
+
+</div><!-- /tab4 -->
+
 </div><!-- /card -->
 </div><!-- /page -->
 
@@ -533,7 +616,7 @@ const PHI = 0.9;
 let GEO = null;
 
 function switchTab(n) {
-  [1,2,3].forEach(i => {
+  [1,2,3,4].forEach(i => {
     document.getElementById('tab'+i).classList.toggle('active', i===n);
     document.getElementById('tabBtn'+i).classList.toggle('active', i===n);
   });
@@ -1279,6 +1362,71 @@ function runSlope() {
 
   document.getElementById('slopeResults').style.display = 'block';
   document.getElementById('slopeResults').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   TAB 4 — Total Lateral Load per Pile
+   ───────────────────────────────────────────────────────────────── */
+function runLateralPressure() {
+  setErr('lp_err', '');
+  document.getElementById('lp_results').style.display = 'none';
+
+  const F_eq   = parseFloat(document.getElementById('lp_eq').value)   || 0;
+  const F_wind = parseFloat(document.getElementById('lp_wind').value)  || 0;
+  const D_mm   = parseFloat(document.getElementById('lp_D').value);
+  const d1     = parseFloat(document.getElementById('lp_d1').value);
+  const n      = parseFloat(document.getElementById('lp_n').value);
+  const K0     = parseFloat(document.getElementById('lp_k0').value);
+  const gamma  = parseFloat(document.getElementById('lp_gamma').value);
+
+  if ([D_mm, d1, n, K0, gamma].some(isNaN)) {
+    setErr('lp_err', 'Please fill in all soil pressure fields.'); return;
+  }
+  if (D_mm <= 0) { setErr('lp_err', 'Pile diameter must be > 0.'); return; }
+  if (d1 < 0)    { setErr('lp_err', 'Zone depth d₁ cannot be negative.'); return; }
+
+  const D = D_mm / 1000; // m
+
+  // At-rest force: triangular distribution 0 → d1
+  // p(z) = K0 × γ × z × n×D  →  F = ½ × K0 × γ × d1² × n×D
+  const F_atrest = 0.5 * K0 * gamma * d1 * d1 * n * D;
+
+  // Governing structural load
+  const F_struct = Math.max(F_eq, F_wind);
+  const govLabel = F_eq >= F_wind ? 'Earthquake' : 'Wind';
+
+  // Total
+  const F_total = F_struct + F_atrest;
+
+  // ── Summary grid ──
+  document.getElementById('lp_outGrid').innerHTML =
+    outCell('Governing Structural Load', fmt(F_struct, 2), 'kN') +
+    outCell('At-Rest Soil Pressure Force', fmt(F_atrest, 2), 'kN') +
+    outCell('Total Lateral Load per Pile', fmt(F_total, 2), 'kN', true);
+
+  // ── Governing note ──
+  const noteEl = document.getElementById('lp_govNote');
+  const atrestNote = d1 > 0
+    ? `At-rest soil force calculated over ${fmt(d1,2)} m depth using K₀ = ${K0}, γ = ${gamma} kN/m³, effective width = ${fmt(n,1)} × ${fmt(D_mm,0)} mm = ${fmt(n*D*1000,0)} mm.`
+    : 'Zone depth is 0 m — no at-rest soil force added.';
+  noteEl.innerHTML = `<strong>${govLabel} governs</strong> the structural lateral load (${fmt(F_struct,2)} kN${F_eq === F_wind && F_eq > 0 ? ' — equal' : ''}).<br>${atrestNote}<br><strong>Specify ${fmt(F_total,2)} kN lateral load per pile to StopDigging for site testing and pile selection.</strong>`;
+
+  // ── Calculation steps ──
+  const p_bot = K0 * gamma * d1 * n * D; // pressure at base of zone (kN/m)
+  const lpSteps = [
+    ['EQ lateral load per pile',    `F_EQ = ${fmt(F_eq,2)}`,   `${fmt(F_eq,2)} kN`,   null],
+    ['Wind lateral load per pile',  `F_Wind = ${fmt(F_wind,2)}`, `${fmt(F_wind,2)} kN`, null],
+    ['Governing structural load',   `F_struct = max(${fmt(F_eq,2)}, ${fmt(F_wind,2)})`, `${fmt(F_struct,2)} kN — ${govLabel}`, null],
+    ['Pile diameter',               `D = ${D_mm} mm`, `${fmt(D,4)} m`, null],
+    ['Effective soil width',        `n × D = ${fmt(n,1)} × ${fmt(D,4)}`, `${fmt(n*D,4)} m`, null],
+    ['At-rest pressure at base',    `p(d₁) = K₀ × γ × d₁ × n×D = ${K0} × ${gamma} × ${fmt(d1,2)} × ${fmt(n*D,4)}`, `${fmt(p_bot,3)} kN/m`, null],
+    ['At-rest force (triangular)',  `F_atrest = ½ × K₀ × γ × d₁² × n×D = ½ × ${K0} × ${gamma} × ${fmt(d1,2)}² × ${fmt(n*D,4)}`, `${fmt(F_atrest,3)} kN`, null],
+    ['Total lateral load per pile', `F_total = F_struct + F_atrest = ${fmt(F_struct,2)} + ${fmt(F_atrest,3)}`, `${fmt(F_total,2)} kN`, null],
+  ];
+  document.getElementById('lp_steps').innerHTML = lpSteps.map(r => stepRow(...r)).join('');
+
+  document.getElementById('lp_results').style.display = 'block';
+  document.getElementById('lp_results').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 </script>
 </body>
